@@ -1,13 +1,17 @@
 # Chismoso
 
-A lightweight client for [Frigate NVR](https://frigate.video) on Windows, macOS and Linux, with Android and iOS builds from the same code. Not affiliated with the Frigate project.
+A small desktop app for [Frigate NVR](https://frigate.video), for Windows, macOS and Linux. Not affiliated with the Frigate project.
 
+I mainly wanted an easy way to turn a day of camera footage into a short timelapse. That works now. Along the way it picked up live view, a recordings timeline, clips and notifications too.
+
+![Chismoso showing six cameras in a grid with the recordings timeline underneath](site/img/screenshot.jpg)
+
+- **Timelapses and exports.** Pick cameras and a time range, then make a timelapse at any speed (2×–3600×) or a real-time clip. Frigate renders it, and the app downloads it, can delete the server copy, and plays exports in-app.
 - **Live view.** A grid of cameras (snapshots, or live video) using Frigate's camera groups or your own layouts, and a full live view per camera with detect/record/snapshot switches. Live video tries WebRTC first, then MSE, then 1 fps snapshots, so something always shows.
 - **Recordings timeline.** Under the grid and under each camera is a bar you can zoom from weeks down to seconds, with alerts and detections marked on it. Click anywhere to play from that moment: one camera, or every camera in the layout in sync. A speed slider goes from −16× (reverse) to 16×.
 - **Clips.** Select a stretch of the bar to save it as a clip (one per camera) or start a timelapse from it.
 - **Notifications.** Native desktop notifications for new Frigate alerts (and optionally detections), per camera, with a cooldown, and a snapshot of the person when one is detected.
 - **Load.** What the app asks of your Frigate server right now, and a 24-hour trend kept on this computer.
-- **Timelapses and exports.** Pick cameras and a time range, then make a timelapse at any speed (2×–3600×) or a real-time clip. Frigate renders it, and the app downloads it, can delete the server copy, and plays exports in-app.
 - **Settings.** System stats (detector speed, camera fps, disk, GPU) and Frigate's `config.yml` editor, with validation, save, save & restart, and restart.
 - **Command line.** The same export engine without the window, for scripts and scheduled jobs.
 

@@ -6,7 +6,7 @@ description: What's on each of Chismoso's four tabs, and where the less obvious 
 
 Once you're signed in, Chismoso has four tabs along the top. You can switch between them with the mouse or with <kbd>Ctrl</kbd>+<kbd>1</kbd> to <kbd>Ctrl</kbd>+<kbd>4</kbd> (<kbd>⌘</kbd>+<kbd>1</kbd> to <kbd>⌘</kbd>+<kbd>4</kbd> on a Mac).
 
-<img src="../img/placeholder-live-grid.svg" width="1200" height="750" alt="Illustration of the Live tab: a grid of four cameras with the recordings timeline underneath." loading="lazy">
+<img src="../img/screenshot.jpg" width="1597" height="933" alt="The Live tab: a grid of six cameras with the recordings timeline underneath." loading="lazy">
 
 ## Live
 

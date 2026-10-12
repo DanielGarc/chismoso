@@ -135,7 +135,6 @@ attributes), and keep files small (WebP or optimized PNG).
 
 | File | Shows |
 |---|---|
-| `placeholder-live-grid.svg` | Live grid with timeline (home hero, tour) |
 | `placeholder-camera-view.svg` | One camera, switches, stream picker |
 | `placeholder-timeline.svg` | Grid playback, speed slider, selection |
 | `placeholder-timelapse.svg` | Timelapse tab with progress |
