@@ -5,6 +5,9 @@ use serde::Serialize;
 /// Display name. The product name is still being decided; change it here
 /// and in tauri.conf.json (productName).
 pub const NAME: &str = "Frigate Desktop";
+/// Bundle identifier from tauri.conf.json (also the Windows AppUserModelID).
+#[cfg_attr(not(windows), allow(dead_code))]
+pub const IDENTIFIER: &str = env!("APP_IDENTIFIER");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const COMMIT: &str = env!("BUILD_COMMIT");
 pub const BUILT: &str = env!("BUILD_DATE");

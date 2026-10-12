@@ -15,6 +15,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
+#[cfg(not(windows))]
 use tauri_plugin_notification::NotificationExt;
 use tungstenite::Message;
 
@@ -139,16 +140,70 @@ fn handle(app: &AppHandle, text: &str, settings: &Mutex<Settings>, last_sent: &m
     let cam = capitalize(&camera.replace('_', " "));
     let title = if severity == "alert" { format!("{what} at {cam}") } else { format!("Detection: {what}") };
     let body = if severity == "alert" { "New alert. Open Frigate Desktop to watch.".to_string() } else { format!("{cam} saw {}", what.to_lowercase()) };
-    let _ = app.notification().builder().title(title).body(body).show();
+    let _ = show(app, &title, &body);
 }
 
 pub fn test(app: &AppHandle) -> Result<(), String> {
-    app.notification()
-        .builder()
-        .title("Notifications are on")
-        .body("You'll get a notification like this when Frigate raises an alert.")
-        .show()
-        .map_err(|e| e.to_string())
+    show(app, "Notifications are on", "You'll get a notification like this when Frigate raises an alert.")
+}
+
+/// One native notification. On Windows we send it ourselves: the plugin falls
+/// back to PowerShell's identity (name and icon) unless the app was installed
+/// with a Start-menu shortcut, so a portable or self-built .exe would show
+/// "Windows PowerShell". See `windows::register`.
+fn show(app: &AppHandle, title: &str, body: &str) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        let _ = app;
+        notify_rust::Notification::new()
+            .summary(title)
+            .body(body)
+            .app_id(windows::APP_ID.get().map(String::as_str).unwrap_or_default())
+            .show()
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(windows))]
+    {
+        app.notification().builder().title(title).body(body).show().map_err(|e| e.to_string())
+    }
+}
+
+/// Gives the app its own identity for Windows notifications, however it was
+/// installed (or not): registers our AppUserModelID for this user with a
+/// display name and icon, and claims that ID for this process so toasts and
+/// the taskbar agree. The installers' Start-menu shortcut uses the same ID.
+#[cfg(windows)]
+pub mod windows {
+    use std::sync::OnceLock;
+    use winreg::RegKey;
+    use winreg::enums::HKEY_CURRENT_USER;
+
+    pub static APP_ID: OnceLock<String> = OnceLock::new();
+    const ICON: &[u8] = include_bytes!("../icons/128x128@2x.png");
+
+    pub fn register(app_id: &str, name: &str) {
+        let _ = APP_ID.set(app_id.to_string());
+        let wide: Vec<u16> = app_id.encode_utf16().chain(Some(0)).collect();
+        // Must happen before the first window opens.
+        unsafe { windows_sys::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID(wide.as_ptr()) };
+        if let Err(e) = write_registration(app_id, name) {
+            eprintln!("couldn't register for notifications: {e}");
+        }
+    }
+
+    fn write_registration(app_id: &str, name: &str) -> std::io::Result<()> {
+        let dir = dirs::data_local_dir().ok_or_else(|| std::io::Error::other("no local app data folder"))?.join(app_id);
+        std::fs::create_dir_all(&dir)?;
+        let icon = dir.join("notification-icon.png");
+        if std::fs::read(&icon).ok().as_deref() != Some(ICON) {
+            std::fs::write(&icon, ICON)?;
+        }
+        let (key, _) = RegKey::predef(HKEY_CURRENT_USER).create_subkey(format!(r"Software\Classes\AppUserModelId\{app_id}"))?;
+        key.set_value("DisplayName", &name)?;
+        key.set_value("IconUri", &icon.to_string_lossy().to_string())?;
+        Ok(())
+    }
 }
 
 fn capitalize(s: &str) -> String {

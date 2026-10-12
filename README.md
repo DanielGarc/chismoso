@@ -33,7 +33,7 @@ Editing the config needs an **admin** account. Viewers can still watch cameras a
 | **MSE** | Linux (WebKitGTK has no WebRTC), or when WebRTC fails | Nothing extra. It runs over the same HTTPS port as the app. |
 | **Snapshots** | Last resort | Nothing. About one frame per second. |
 
-Badges in the live view show which method is active. Away from home, MSE usually works where WebRTC's UDP port doesn't.
+Badges in the live view show which method is active and the frame rate you're actually getting, measured from the video itself. (Frigate's own `camera_fps` is the *detect* stream's rate, often 5 fps; it's in the tooltip, and it doesn't limit live view.) Away from home, MSE usually works where WebRTC's UDP port doesn't.
 
 If a camera has a second stream in `live.streams` (for example a substream), the grid uses it to save bandwidth. The full view lets you switch between streams.
 
@@ -62,7 +62,7 @@ Under the hood it's light: the bar asks Frigate for one day of recordings at a t
 
 ### Notifications
 
-**Settings → Notifications** turns on native desktop notifications for new alerts, optionally detections too, for all cameras or the ones you pick, at most one per camera per cooldown. They come from one WebSocket to Frigate's `/ws` while the app is running (no MQTT broker needed); the same connection keeps open timelines current. Use **Send a test notification** to check your system allows them (on macOS, allow the app under System Settings → Notifications).
+**Settings → Notifications** turns on native desktop notifications for new alerts, optionally detections too, for all cameras or the ones you pick, at most one per camera per cooldown. They come from one WebSocket to Frigate's `/ws` while the app is running (no MQTT broker needed); the same connection keeps open timelines current. Use **Send a test notification** to check your system allows them (on macOS, allow the app under System Settings → Notifications). On Windows the app registers its own name and icon for notifications at startup (per user, under `HKCU\Software\Classes\AppUserModelId\io.github.frigate-desktop`), so they don't show up as "Windows PowerShell" even when you run the `.exe` without installing it.
 
 ### Timelapses
 

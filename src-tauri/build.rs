@@ -19,6 +19,11 @@ fn main() {
     println!("cargo:rerun-if-changed=../.git/HEAD");
     println!("cargo:rerun-if-changed=../.git/index");
     println!("cargo:rerun-if-env-changed=SOURCE_DATE_EPOCH");
+    // The bundle identifier doubles as the Windows AppUserModelID for notifications.
+    let conf = std::fs::read_to_string("tauri.conf.json").expect("tauri.conf.json");
+    let id = conf.split("\"identifier\"").nth(1).and_then(|r| r.split('"').nth(1)).expect("identifier in tauri.conf.json");
+    println!("cargo:rustc-env=APP_IDENTIFIER={id}");
+    println!("cargo:rerun-if-changed=tauri.conf.json");
     tauri_build::build()
 }
 

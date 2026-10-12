@@ -471,6 +471,10 @@ fn main() {
         std::process::exit(cli::run(args));
     }
 
+    // Windows: notifications (and the taskbar) show this app's name and icon.
+    #[cfg(windows)]
+    notify::windows::register(about::IDENTIFIER, about::NAME);
+
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
         .manage(AppState::default())

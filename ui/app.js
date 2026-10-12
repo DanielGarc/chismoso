@@ -377,10 +377,13 @@ function startGrid() {
   refreshSnapshots();
   clearInterval(state.snapTimer);
   state.snapTimer = setInterval(refreshSnapshots, 2000);
+  clearInterval(state.fpsTimer);
+  state.fpsTimer = setInterval(measureTiles, 2000);
 }
 
 function stopGrid() {
   clearInterval(state.snapTimer);
+  clearInterval(state.fpsTimer);
   for (const t of state.tiles.values()) {
     t.ctrl?.abort(); t.ctrl = null;
     if (t.rtc) { t.rtc.close(); t.rtc = null; }
@@ -397,7 +400,7 @@ async function startTileVideo(name, t) {
   try {
     const rtc = await Live.play(t.video, stream, { signal: ctrl.signal });
     if (ctrl.signal.aborted) return rtc.close();
-    t.rtc = rtc;
+    t.rtc = rtc; t.counter = frameCounter(t.video); t.liveFps = null; paintTileStats();
     t.video.hidden = false; t.img.hidden = true;
     t.el.querySelector(".empty").hidden = true;
     rtc.onDrop = () => { // fall back to snapshots instead of freezing
@@ -424,13 +427,42 @@ async function refreshSnapshots() {
   snapBusy = false;
 }
 
+// Tile corner: what you're actually seeing. The frame rate is measured from
+// the video element (frames decoded), not Frigate's camera_fps, which is the
+// detect stream's rate (often 5) and says nothing about the live view.
 function paintTileStats() {
   for (const [name, t] of state.tiles) {
     const s = state.stats?.cameras?.[name];
-    const fps = s?.camera_fps ?? 0;
-    t.fps.textContent = s ? `${fps.toFixed(1)} fps` : "";
-    t.dot.className = "state " + (s ? (fps > 0 ? "live" : "off") : "");
+    const camFps = s?.camera_fps ?? 0;
+    t.dot.className = "state " + (s ? (camFps > 0 ? "live" : "off") : "");
+    t.fps.title = s ? `Frigate is receiving ${camFps.toFixed(1)} fps on the detect stream` : "";
+    if (state.gridRec) t.fps.textContent = "recording";
+    else if (t.rtc) t.fps.textContent = t.liveFps != null ? `${t.rtc.kind === "webrtc" ? "WebRTC" : "MSE"} · ${Math.round(t.liveFps)} fps` : (t.rtc.kind === "webrtc" ? "WebRTC" : "MSE");
+    else t.fps.textContent = s ? "snapshot" : "";
   }
+}
+
+// Frames actually shown per second, from the video element's own counters.
+function frameCounter(video) {
+  let last = null;
+  return () => {
+    const q = video.getVideoPlaybackQuality?.();
+    if (!q || video.paused || video.hidden) { last = null; return null; }
+    const now = performance.now(), frames = q.totalVideoFrames - q.droppedVideoFrames;
+    const prev = last;
+    last = { now, frames };
+    if (!prev || now - prev.now < 500 || frames < prev.frames) return null;
+    return (frames - prev.frames) * 1000 / (now - prev.now);
+  };
+}
+function measureTiles() {
+  if (document.hidden || state.view !== "live" || state.focus) return;
+  for (const t of state.tiles.values()) {
+    t.counter ??= frameCounter(t.video);
+    const f = t.rtc ? t.counter() : null;
+    if (f != null) t.liveFps = f; else if (!t.rtc) t.liveFps = null;
+  }
+  paintTileStats();
 }
 
 async function pollStats() {
@@ -565,6 +597,8 @@ async function startLive() {
     const rtc = await Live.play(focusVideo, cam.streams[focus.streamIdx][1], { signal: ctrl.signal });
     if (ctrl.signal.aborted) return rtc.close();
     focus.rtc = rtc;
+    focus.ticks = 0;
+    focus.counter = frameCounter(focusVideo);
     badge.className = "badge ok"; badge.textContent = rtc.kind === "webrtc" ? "Live · WebRTC" : "Live · MSE";
     rtc.onDrop = (e) => {
       if (focus.rtc === rtc) fallbackSnapshots(focus, `Stream interrupted (${errText(e)}). Showing snapshots; press Live to retry.`);
@@ -673,6 +707,11 @@ function startTicker() {
     } else {
       timeline.setPlayhead(null, true);
       $("#pb-time").textContent = "Live";
+      const f = state.focus;
+      if (f?.rtc && ++f.ticks % 8 === 0) { // every 2 s
+        const fps = f.counter();
+        if (fps != null) $("#focus-mode").textContent = `Live · ${f.rtc.kind === "webrtc" ? "WebRTC" : "MSE"} · ${Math.round(fps)} fps`;
+      }
       $("#stage-time").textContent = "";
     }
   }, 250);

@@ -1154,6 +1154,7 @@ dependencies = [
  "chrono",
  "dirs",
  "getrandom 0.4.3",
+ "notify-rust",
  "reqwest",
  "rustls",
  "rustls-platform-verifier",
@@ -1166,6 +1167,8 @@ dependencies = [
  "tiny_http",
  "tungstenite",
  "webkit2gtk",
+ "windows-sys 0.61.2",
+ "winreg",
 ]
 
 [[package]]
