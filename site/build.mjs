@@ -129,7 +129,7 @@ ${body}
         <li><a href="${GH}/issues">Report a problem</a></li>
       </ul>
     </nav>
-    <p class="foot-note">${config.name} is an independent project. It is not affiliated with, endorsed by, or supported by the Frigate project. It's free software. <!-- TODO: name the license here once a LICENSE file exists. --></p>
+    <p class="foot-note">${config.name} is an independent project. It is not affiliated with, endorsed by, or supported by the Frigate project. It's free software under the <a href="https://github.com/${config.repo}/blob/${config.branch}/LICENSE">MIT license</a>.</p>
   </div>
 </footer>
 </body>

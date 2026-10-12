@@ -3,6 +3,7 @@ name = "chismoso"
 version = "0.1.0"
 description = "Lightweight client for Frigate NVR: live view, recordings, timelapses, alerts"
 edition = "2024"
+license = "MIT"
 
 # Desktop builds the `chismoso` binary (src/main.rs); Android and iOS
 # load the library (src/lib.rs, `run`) from their native shells.
