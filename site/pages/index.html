@@ -1,16 +1,15 @@
 ---
 title: Chismoso
-description: Chismoso is a small, fast, open-source app for your Frigate NVR cameras: a live grid, a recordings timeline you can zoom from weeks to seconds, clips, timelapses and alerts. No Electron.
+description: A small, free app for Frigate NVR that started as a way to make timelapses, then picked up a live grid, a recordings timeline, clips and alerts along the way.
 active: home
 ---
 <main id="main">
 
 <section class="hero" aria-labelledby="hero-title">
   <div class="wrap">
-    <p class="eyebrow">Free and open source · for Frigate NVR</p>
-    <h1 id="hero-title">Everything your cameras saw, <em>in one small app</em></h1>
-    <p class="pitch">Chismoso is a lightweight desktop client for Frigate. Watch every camera live, scrub back through weeks of footage in seconds, save clips and timelapses, and get a notification when someone's at the door.</p>
-    <p class="aside"><dfn lang="es">chismoso</dfn> (Spanish, informal): the neighbor who always knows what's going on. For your cameras, that's a compliment.</p>
+    <p class="eyebrow">A side project · free and open source · for Frigate NVR</p>
+    <h1 id="hero-title">Timelapses from your Frigate cameras, <em>made easy</em></h1>
+    <p class="pitch">I wanted a simple way to turn a day of camera footage into a one-minute timelapse. That part works. Then I got a little carried away, so it also does live view, a recordings timeline, clips and notifications. It's free, and it stays small.</p>
     <div class="dl-primary" data-dl-primary="download.html">
       <a class="btn btn-primary" href="download.html">Download</a>
     </div>
@@ -23,9 +22,25 @@ active: home
   </div>
 </section>
 
-<section class="section" aria-labelledby="f-live">
+<section class="section" aria-labelledby="f-clips">
   <div class="wrap">
     <div class="row">
+      <div class="row-text">
+        <h2 id="f-clips">A whole day in a minute</h2>
+        <p>This is the reason the app exists. Pick the cameras and a time range, say how long the timelapse should be, and Chismoso works out the speed. Frigate does the rendering, several cameras at a time, and the files land in a folder you choose. Plain clips work the same way.</p>
+        <ul>
+          <li><strong>Fast</strong> mode decodes keyframes only, many times quicker for long ranges.</li>
+          <li>Optionally delete the server copy once it's downloaded.</li>
+          <li>The same engine runs from the command line for scheduled jobs.</li>
+        </ul>
+        <a class="more" href="docs/clips-and-timelapses.html">More about clips and timelapses</a>
+      </div>
+      <figure class="shot">
+        <img src="img/placeholder-timelapse.svg" width="1200" height="750" loading="lazy" alt="Illustration of the Timelapse tab: three cameras selected, yesterday's range, a one-minute target length at 1440×, and progress bars for exports rendering in parallel.">
+      </figure>
+    </div>
+
+    <div class="row flip">
       <div class="row-text">
         <h2 id="f-live">Watch live, without the wait</h2>
         <p>Every camera in a grid, or one camera full size. Chismoso picks the best way to stream on its own: WebRTC through Frigate's go2rtc when it can, MSE when it can't, and snapshots as a last resort, so there's always a picture.</p>
@@ -41,7 +56,7 @@ active: home
       </figure>
     </div>
 
-    <div class="row flip">
+    <div class="row">
       <div class="row-text">
         <h2 id="f-timeline">Scroll back through time</h2>
         <p>Under the grid sits a timeline you can zoom from weeks down to seconds, with alerts in red and detections in amber. Click anywhere and every camera in the layout plays from that moment, in step.</p>
@@ -54,22 +69,6 @@ active: home
       </div>
       <figure class="shot">
         <img src="img/placeholder-timeline.svg" width="1200" height="750" loading="lazy" alt="Illustration of recordings playback: two cameras playing in sync at 4×, with a selected range on the timeline ready to save as a clip or timelapse.">
-      </figure>
-    </div>
-
-    <div class="row">
-      <div class="row-text">
-        <h2 id="f-clips">Keep the parts that matter</h2>
-        <p>Save a clip from any camera, or squeeze a whole day into a one-minute timelapse. Pick a target length and Chismoso works out the speed. Frigate does the rendering, several cameras at a time, and the app downloads the results to a folder you choose.</p>
-        <ul>
-          <li><strong>Fast</strong> mode decodes keyframes only, many times quicker for long ranges.</li>
-          <li>Optionally delete the server copy once it's downloaded.</li>
-          <li>The same engine runs from the command line for scheduled jobs.</li>
-        </ul>
-        <a class="more" href="docs/clips-and-timelapses.html">More about clips and timelapses</a>
-      </div>
-      <figure class="shot">
-        <img src="img/placeholder-timelapse.svg" width="1200" height="750" loading="lazy" alt="Illustration of the Timelapse tab: three cameras selected, yesterday's range, a one-minute target length at 1440×, and progress bars for exports rendering in parallel.">
       </figure>
     </div>
 
@@ -108,7 +107,7 @@ active: home
   <div class="wrap">
     <div class="center">
       <h2 id="more-title">And a few more things</h2>
-      <p class="lead">The details that make it pleasant to use every day.</p>
+      <p class="lead">Smaller things that came along the way.</p>
     </div>
     <ul class="cards">
       <li>
@@ -149,8 +148,8 @@ active: home
       </li>
       <li>
         <svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></svg>
-        <h3>Phones, soon</h3>
-        <p>Android and iOS are built from the same code. The first phone release comes later.</p>
+        <h3>Phones, eventually</h3>
+        <p>Android and iOS are built from the same code. A phone release will come later.</p>
         <a class="more" href="docs/phones.html">Phone apps</a>
       </li>
       <li>
@@ -165,8 +164,8 @@ active: home
 
 <section class="section cta" aria-labelledby="cta-title">
   <div class="wrap">
-    <h2 id="cta-title">Give your cameras a nosy neighbor</h2>
-    <p class="lead">Windows, macOS and Linux today. Android and iOS are on the way.</p>
+    <h2 id="cta-title">Give it a try</h2>
+    <p class="lead">Windows, macOS and Linux. If something breaks or you have an idea, open an issue on GitHub.</p>
     <div class="dl-primary" data-dl-primary="download.html">
       <a class="btn btn-primary" href="download.html">Download</a>
     </div>

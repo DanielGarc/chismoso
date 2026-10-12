@@ -58,11 +58,17 @@ code, kbd, pre { font-family: var(--mono); font-size: .9em; }
 .top-nav a { display: flex; align-items: center; gap: 7px; color: var(--muted); text-decoration: none; padding: 7px 12px; border-radius: 8px; font-weight: 500; font-size: .95rem; }
 .top-nav a:hover { color: var(--text); background: var(--panel); }
 .top-nav a[aria-current="page"] { color: var(--text); background: var(--panel-2); }
+.gh-stars { display: inline-flex; align-items: center; gap: 4px; margin-left: 2px; padding: 1px 8px; border: 1px solid var(--line, #1f2937); border-radius: 999px; font-size: .82rem; font-variant-numeric: tabular-nums; color: var(--text); }
+.gh-stars[hidden] { display: none; }
+.gh-stars .i { width: 12px; height: 12px; color: #f5b83d; }
 @media (max-width: 420px) {
   .top-in { padding: 0 14px; }
   .brand span { font-size: 1rem; }
   .top-nav a { padding: 7px 9px; }
   .gh-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .top-nav ul { gap: 0; }
+  .top-nav a { gap: 5px; }
+  .gh-stars { padding: 1px 6px; }
 }
 
 /* ---- Buttons ------------------------------------------------------------- */
@@ -96,7 +102,6 @@ code, kbd, pre { font-family: var(--mono); font-size: .9em; }
 .hero h1 em { font-style: normal; color: var(--accent-2); }
 .pitch { max-width: 640px; margin: 20px auto 0; font-size: clamp(1.05rem, 2.2vw, 1.25rem); color: #c3cad6; }
 .aside { max-width: 560px; margin: 12px auto 0; color: var(--muted); font-size: .95rem; }
-.aside dfn { font-style: italic; color: var(--text); }
 .dl-primary { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 30px; }
 .dl-meta { min-height: 1.5em; margin: 12px 0 0; color: var(--muted); font-size: .9rem; }
 .hero-links { margin: 6px 0 0; font-size: .95rem; }
@@ -336,3 +341,4 @@ h2:hover .anchor, h3:hover .anchor, h4:hover .anchor { opacity: 1; }
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
 .page-end { margin-bottom: 72px; }
+@media (max-width: 400px) { .gh-stars { display: none !important; } }

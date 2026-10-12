@@ -61,6 +61,7 @@ function frontMatter(src, file) {
 
 // ── Icons (inline SVG, no icon font) ─────────────────────────────────────────
 const ICON = {
+  star: '<svg aria-hidden="true" viewBox="0 0 16 16" class="i"><path fill="currentColor" d="M8 .9l2.2 4.5 4.9.7-3.6 3.5.9 4.9L8 12.2l-4.4 2.3.9-4.9L.9 6.1l4.9-.7z"/></svg>',
   github: '<svg aria-hidden="true" viewBox="0 0 16 16" class="i"><path fill="currentColor" d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.66 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 8 0z"/></svg>',
   search: '<svg aria-hidden="true" viewBox="0 0 24 24" class="i"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
   menu: '<svg aria-hidden="true" viewBox="0 0 24 24" class="i"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
@@ -90,7 +91,7 @@ function layout({ title, description, root, urlPath, active, body, scripts = [],
 <link rel="icon" href="${root}img/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="${root}img/apple-touch-icon.png">
 <link rel="stylesheet" href="${root}assets/style.css">
-${scripts.map((s) => `<script src="${root}assets/${s}" defer></script>`).join('\n')}
+${[...scripts, 'stars.js'].map((s) => `<script src="${root}assets/${s}" defer></script>`).join('\n')}
 </head>
 <body class="${bodyClass}">
 <a class="skip" href="#main">Skip to content</a>
@@ -104,7 +105,7 @@ ${scripts.map((s) => `<script src="${root}assets/${s}" defer></script>`).join('\
       <ul>
         <li><a href="${root}docs/index.html"${cur('docs')}>Docs</a></li>
         <li><a href="${root}download.html"${cur('download')}>Download</a></li>
-        <li><a href="${GH}" class="gh-link">${ICON.github}<span class="gh-text">GitHub</span></a></li>
+        <li><a href="${GH}" class="gh-link">${ICON.github}<span class="gh-text">GitHub</span><span class="gh-stars" data-stars hidden>${ICON.star}<span></span></span></a></li>
       </ul>
     </nav>
   </div>
