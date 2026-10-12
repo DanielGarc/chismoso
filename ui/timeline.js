@@ -362,22 +362,50 @@ class Timeline {
 
     c.addEventListener("dblclick", (e) => { this.zoomBy(0.4, this.t(pos(e).x)); this.emitSelection(); });
 
-    let down = null; // { x, start, mode: "pan" | "select" | "edge-a" | "edge-b", moved }
+    let down = null; // { x, start, mode: "pan" | "select" | "edge-a" | "edge-b" | "pinch", moved }
+    // Touch: two fingers pinch to zoom around their midpoint. Edges of a
+    // selection are easier to grab with a finger than a mouse needs.
+    const touches = new Map(); // pointerId -> x
+    const edge = (e) => (e.pointerType === "touch" ? 18 : 7);
+    const pinchState = () => {
+      const [a, b] = [...touches.values()];
+      return { dist: Math.max(20, Math.abs(a - b)), mid: (a + b) / 2 };
+    };
     c.addEventListener("pointerdown", (e) => {
       if (e.button !== 0) return;
       c.setPointerCapture(e.pointerId);
       const { x } = pos(e);
+      if (e.pointerType === "touch") {
+        touches.set(e.pointerId, x);
+        if (touches.size === 2) {
+          const p = pinchState();
+          down = { mode: "pinch", moved: true, span: this.end - this.start, dist: p.dist, anchor: this.t(p.mid), frac: p.mid / this.w };
+          this.follow = false;
+          return;
+        }
+        if (touches.size > 2) return;
+      }
       let mode = this.selectMode || e.shiftKey ? "select" : "pan";
       if (this.sel) {
-        if (Math.abs(x - this.x(this.sel.a)) < 7) mode = "edge-a";
-        else if (Math.abs(x - this.x(this.sel.b)) < 7) mode = "edge-b";
+        if (Math.abs(x - this.x(this.sel.a)) < edge(e)) mode = "edge-a";
+        else if (Math.abs(x - this.x(this.sel.b)) < edge(e)) mode = "edge-b";
       }
       down = { x, start: this.start, mode, moved: false, t0: this.t(x) };
       this.dragging = true;
     });
     c.addEventListener("pointermove", (e) => {
       const { x, y } = pos(e);
-      this.hover = x;
+      if (touches.has(e.pointerId)) touches.set(e.pointerId, x);
+      if (down?.mode === "pinch") {
+        if (touches.size < 2) return;
+        const p = pinchState();
+        const span = Math.min(Timeline.MAX_SPAN, Math.max(Timeline.MIN_SPAN, down.span * down.dist / p.dist));
+        const start = down.anchor - (p.mid / this.w) * span; // keep the pinched moment under the fingers
+        this.setView(start, start + span);
+        this.emitSelection();
+        return;
+      }
+      if (e.pointerType !== "touch") this.hover = x;
       if (!down) {
         const ev = this.eventAt(x, y);
         if (ev !== this.hoverEvent) { this.hoverEvent = ev; this.onHoverEvent?.(ev, x); }
@@ -404,6 +432,8 @@ class Timeline {
       }
     });
     const up = (e) => {
+      touches.delete(e.pointerId);
+      if (down?.mode === "pinch") { if (!touches.size) { down = null; this.dragging = false; } return; }
       if (!down) return;
       const d = down;
       down = null;
@@ -417,7 +447,7 @@ class Timeline {
       this.onSeek(this.t(x));
     };
     c.addEventListener("pointerup", up);
-    c.addEventListener("pointercancel", () => { down = null; this.dragging = false; c.style.cursor = ""; });
+    c.addEventListener("pointercancel", (e) => { touches.delete(e.pointerId); down = null; this.dragging = false; c.style.cursor = ""; });
     c.addEventListener("pointerleave", () => {
       this.hover = null;
       if (this.hoverEvent) { this.hoverEvent = null; this.onHoverEvent?.(null); }

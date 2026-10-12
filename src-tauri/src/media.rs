@@ -111,11 +111,10 @@ fn handle(req: tiny_http::Request, client: &Mutex<Option<Frigate>>, prefix: &str
                 headers.push(Header::from_bytes("Vary", "Origin").unwrap());
             }
             for name in ["content-type", "content-range", "accept-ranges"] {
-                if let Some(v) = upstream.headers().get(name).and_then(|v| v.to_str().ok()) {
-                    if let Ok(h) = Header::from_bytes(name, v) {
+                if let Some(v) = upstream.headers().get(name).and_then(|v| v.to_str().ok())
+                    && let Ok(h) = Header::from_bytes(name, v) {
                         headers.push(h);
                     }
-                }
             }
             let _ = req.respond(Response::new(StatusCode(status), headers, Counting(upstream), len, None));
         }

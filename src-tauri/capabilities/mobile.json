@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "mobile",
+  "description": "Android and iOS: local notifications (sent from Rust; the page never calls the plugin directly).",
+  "platforms": ["android", "iOS"],
+  "windows": ["main"],
+  "permissions": ["notification:default"]
+}

@@ -465,6 +465,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tls", action="store_true", help="serve HTTPS with a self-signed cert and require login")
     ap.add_argument("--port", type=int)
+    ap.add_argument("--host", default="127.0.0.1", help="0.0.0.0 to reach it from a phone on the same network")
     a = ap.parse_args()
     REQUIRE_AUTH = a.tls
 
@@ -506,8 +507,8 @@ def main():
         ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         ctx.load_cert_chain(MEDIA / "cert.pem", MEDIA / "key.pem")
     port = a.port or (5443 if a.tls else 5055)
-    print(f"mock Frigate on {'https' if a.tls else 'http'}://127.0.0.1:{port}", flush=True)
-    web.run_app(app, host="127.0.0.1", port=port, ssl_context=ctx, print=None)
+    print(f"mock Frigate on {'https' if a.tls else 'http'}://{a.host}:{port}", flush=True)
+    web.run_app(app, host=a.host, port=port, ssl_context=ctx, print=None)
 
 
 if __name__ == "__main__":

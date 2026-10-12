@@ -4,8 +4,18 @@ src-tauri/target/
 **/*.rs.bk
 *.pdb
 
-# --- Tauri 2 generated files (schemas, mobile projects) ---
-src-tauri/gen/
+# --- Tauri 2 generated files ---
+# Schemas are regenerated on every build. The mobile shells that
+# `cargo tauri android init` / `ios init` create (gen/android, gen/apple) ARE
+# source: commit them once they exist, but not their build output.
+src-tauri/gen/schemas/
+src-tauri/gen/android/app/build/
+src-tauri/gen/android/.gradle/
+src-tauri/gen/android/build/
+src-tauri/gen/android/local.properties
+src-tauri/gen/apple/build/
+src-tauri/gen/apple/DerivedData/
+src-tauri/gen/apple/**/xcuserdata/
 
 # --- Node (not used today, but keep tooling noise out) ---
 node_modules/

@@ -79,7 +79,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .view { flex: 1; overflow: auto; padding: 18px 20px 28px; }
 
 /* ── live grid ────────────────────────── */
-.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); grid-auto-rows: max-content; } /* tiles keep 16:9 even when the grid scrolls */
 .tile { position: relative; background: #05070b; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; aspect-ratio: 16 / 9; cursor: pointer; }
 .tile:hover { border-color: var(--accent); }
 .tile img, .tile video { width: 100%; height: 100%; object-fit: contain; display: block; background: #05070b; }
@@ -412,3 +412,38 @@ dialog.dlg::backdrop { background: #000a; }
 .trend-svg .cross { stroke: var(--muted); stroke-width: 1; }
 .trend-tip { position: absolute; top: -4px; padding: 3px 8px; border-radius: 6px; background: var(--panel-2); border: 1px solid var(--line); font-size: 12px; white-space: nowrap; pointer-events: none; font-variant-numeric: tabular-nums; }
 .decode-hint { color: #fcd34d; margin: 10px 0 0; }
+
+/* ══ Compact layout: phones (data-form="mobile") and narrow windows ══════
+   Set by ui/platform.js as <html data-compact>. Touch tweaks key off
+   html.touch (coarse pointer), not the form factor. */
+html[data-compact] body { padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
+html[data-compact] .appbar { height: auto; min-height: 46px; flex-wrap: wrap; gap: 8px; padding: 6px 10px; }
+html[data-compact] .appbar-drag, html[data-compact] .app-name { display: none; }
+html[data-compact] .tabs { position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; border-radius: 0; border-width: 1px 0 0;
+  justify-content: space-around; padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); background: var(--panel); }
+html[data-compact] .tab { flex-direction: column; gap: 3px; padding: 4px 12px; font-size: 11px; }
+html[data-compact] .tab svg { width: 20px; height: 20px; }
+html[data-compact] main { padding-bottom: calc(62px + env(safe-area-inset-bottom)); }
+html[data-compact] .menu-wrap { margin-left: auto; }
+html[data-compact] .appbar-tools { order: 5; width: 100%; flex-wrap: wrap; }
+html[data-compact] #cols { display: none; }
+html[data-compact] #grid { grid-template-columns: 1fr !important; }
+html[data-compact] .view { padding: 10px 10px 16px; }
+html[data-compact] .focus-bar { gap: 6px; }
+html[data-compact] .focus-bar .grow { display: none; }
+html[data-compact] .focus-bar .toggles { order: 5; width: 100%; }
+html[data-compact] .stage { min-height: 200px; }
+html[data-compact] .pb-row { gap: 6px; }
+html[data-compact] .pb-time { flex-basis: 100%; order: -1; min-width: 0; }
+html[data-compact] .pb-row .grow, html[data-compact] .pb-scope { display: none; }
+html[data-compact] .rate input[type=range] { width: 108px; }
+html[data-compact] .tl-head { flex-wrap: wrap; }
+html[data-compact] .sel-pop { flex-wrap: wrap; }
+html[data-compact] body.theater .pb { left: 6px; right: 6px; bottom: calc(6px + env(safe-area-inset-bottom)); }
+
+/* touch: bigger targets, taller bar, no hover-only affordances */
+html.touch .btn, html.touch .tab, html.touch .seg button, html.touch .menu button { min-height: 40px; }
+html.touch canvas.timeline { height: 76px; }
+html.touch .rate input[type=range] { height: 32px; }
+html.touch .rate input[type=range]::-webkit-slider-thumb { width: 22px; height: 22px; margin-top: 5px; }
+html.no-keyboard kbd { display: none; }

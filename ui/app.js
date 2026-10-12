@@ -1341,10 +1341,10 @@ function applyJobEvent(j) {
     $(".stage-txt", el).title = j.path;
     $(".bar", el).hidden = true;
     const acts = $(".job-actions", el);
-    acts.replaceChildren(
+    acts.replaceChildren(...(Platform.has("open_files") ? [
       h("button", { class: "link", onclick: () => invoke("open_path", { path: j.path, reveal: false }) }, "Play"),
-      h("button", { class: "link", onclick: () => invoke("open_path", { path: j.path, reveal: true }) }, "Show in folder"));
-    acts.hidden = false;
+      h("button", { class: "link", onclick: () => invoke("open_path", { path: j.path, reveal: true }) }, "Show in folder")] : []));
+    acts.hidden = !acts.children.length;
     if (state.view === "exports") refreshExports();
   }
   tickJobs();
@@ -1788,8 +1788,9 @@ $("#n-test").addEventListener("click", () => call("test_notification").then(() =
 // ══ About / version ═════════════════════════════════════════════════
 let appInfo = null;
 const versionLine = (i) => `${i.name} ${i.version}${i.commit ? ` (${i.commit})` : ""}`;
-invoke("app_info").then((i) => {
+Platform.info.then((i) => {
   appInfo = i;
+  document.body.classList.toggle("mac", i.os === "macos"); // traffic lights (iPadOS also says "Mac" in the user agent)
   $("#login-ver").textContent = versionLine(i);
   document.title = i.name;
   $$(".app-name").forEach((el) => (el.textContent = i.name)); // one place to rename the app: about.rs

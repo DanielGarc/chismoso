@@ -1,0 +1,78 @@
+# Every push and pull request: build-checks the app for every platform it
+# ships on, so a desktop-only change can't quietly break mobile (or the
+# reverse). Release builds are in release.yml.
+name: Check
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  desktop:
+    name: Desktop (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Clippy (warnings are errors)
+        working-directory: src-tauri
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Tests
+        working-directory: src-tauri
+        run: cargo test
+      - name: UI scripts parse
+        if: runner.os == 'Linux'
+        run: for f in ui/*.js; do node --check "$f"; done
+
+  android:
+    name: Android (library check)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Clippy for Android
+        working-directory: src-tauri
+        run: |
+          bin="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          export CC_aarch64_linux_android="$bin/aarch64-linux-android24-clang"
+          export AR_aarch64_linux_android="$bin/llvm-ar"
+          export WRY_ANDROID_PACKAGE=io.github.frigate_desktop WRY_ANDROID_LIBRARY=frigate_desktop_lib
+          export WRY_ANDROID_KOTLIN_FILES_OUT_DIR="$RUNNER_TEMP/kotlin"
+          cargo clippy --lib --target aarch64-linux-android -- -D warnings
+
+  ios:
+    name: iOS (library check)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Clippy for iOS
+        working-directory: src-tauri
+        run: cargo clippy --lib --target aarch64-apple-ios -- -D warnings

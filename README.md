@@ -119,6 +119,10 @@ cargo build --release  # optimized binary in src-tauri/target/release/
 
 For installers (`.msi`/`.exe`, `.dmg`/`.app`, `.deb`/`.rpm`/`.AppImage`), install the Tauri CLI with `cargo install tauri-cli --version "^2"`, then run `cargo tauri build` from the project root.
 
+**Mobile:** see [docs/PLATFORMS.md](docs/PLATFORMS.md#running-each-platform) for Android and iOS (`cargo tauri android dev`, `cargo tauri ios dev`). They compile today; they haven't been run on a device yet.
+
+**Checks:** `.github/workflows/check.yml` lints and tests every platform (Linux, Windows, macOS, Android, iOS) on each push. Locally, `sh dev/cross-check.sh` covers Linux, Windows and Android from a Linux machine.
+
 **Automated builds:** `.github/workflows/release.yml` builds all platforms on GitHub. Push a tag such as `v0.1.0`, and the installers appear on a draft release.
 
 macOS builds aren't code-signed. The first time, right-click the app and choose **Open**, or run `xattr -dr com.apple.quarantine "/Applications/Frigate Desktop.app"`.
@@ -136,22 +140,30 @@ python3 dev/mock_frigate.py --tls    # https://127.0.0.1:5443, self-signed, admi
 
 ## How it fits together
 
+One codebase for desktop and (soon) mobile; **read [docs/PLATFORMS.md](docs/PLATFORMS.md) before adding a feature**. In short: OS-specific code lives only in `src-tauri/src/platform/`, and the UI asks `Platform.has("…")` instead of checking the OS.
+
 ```
 ui/                    the interface (plain HTML/CSS/JS, no build step)
-  app.js               screens: login, live grid/focus, exports, settings
+  platform.js          what this device can do; compact (phone) layout switch
+  app.js               screens: login, live grid/focus, exports, load, settings
   webrtc.js            WebRTC and MSE live players, and the fallback order
-  timeline.js          zoomable recordings bar (canvas)
-  playback.js          recordings player (HLS/fMP4 → MediaSource, reverse stepping) and multi-camera sync
+  timeline.js          zoomable recordings bar (canvas; mouse, trackpad, pinch)
+  playback.js          recordings player (HLS/fMP4 → MediaSource, reverse) and multi-camera sync
 src-tauri/src/
-  main.rs              app setup and the commands the UI calls
+  lib.rs               the app (shared by desktop and mobile)
+  main.rs              desktop entry: command-line mode, then the window
+  commands.rs          everything the UI calls
+  platform/            desktop.rs and mobile.rs: notifications, files, window setup, decoding check
   frigate.rs           Frigate API client (login, cameras, exports, config, stats, WebRTC signaling)
   jobs.rs              export pipeline: queue → wait for render → download → optional cleanup
-  mse.rs               go2rtc MSE WebSocket (fMP4) → raw bytes to the UI
-  media.rs             private local HTTP server for snapshots and videos
-  notify.rs            Frigate /ws watcher: native notifications + live timeline updates
-  about.rs             name, version, commit and build date
-  cli.rs               command-line mode
-dev/                   mock Frigate server for development
+  mse.rs               go2rtc MSE WebSocket (fMP4) → raw bytes to the UI; /ws commands
+  notify.rs            Frigate /ws watcher: alerts → notifications + live timeline updates
+  media.rs             private local HTTP server for snapshots, recordings and videos
+  tls.rs               certificate checks and pinning (ring)
+  about.rs, metrics.rs name/version; load counters
+  cli.rs               command-line mode (desktop only)
+dev/                   mock Frigate server, cross-platform lint script
+docs/PLATFORMS.md      the desktop/mobile contract, run instructions, feature matrix
 ```
 
 How the pieces talk to Frigate:

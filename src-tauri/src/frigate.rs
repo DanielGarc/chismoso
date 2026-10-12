@@ -381,7 +381,7 @@ impl Frigate {
                 }
             })
             .collect();
-        cams.sort_by(|a, b| a.friendly_name.to_lowercase().cmp(&b.friendly_name.to_lowercase()));
+        cams.sort_by_key(|a| a.friendly_name.to_lowercase());
         let mut groups: Vec<CameraGroup> = cfg["camera_groups"]
             .as_object()
             .map(|m| {
@@ -529,12 +529,11 @@ impl Frigate {
         }
         file.flush()?;
         drop(file);
-        if let Some(t) = total {
-            if done < t {
+        if let Some(t) = total
+            && done < t {
                 let _ = std::fs::remove_file(&tmp);
                 bail!("download incomplete ({done} of {t} bytes)");
             }
-        }
         std::fs::rename(&tmp, dest).with_context(|| format!("can't save {}", dest.display()))?;
         Ok(dest.to_path_buf())
     }

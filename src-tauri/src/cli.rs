@@ -64,6 +64,7 @@ struct Args {
 }
 
 pub fn run(argv: Vec<String>) -> i32 {
+    crate::tls::init();
     match run_inner(argv) {
         Ok(code) => code,
         Err(e) => {
@@ -111,11 +112,10 @@ fn run_inner(argv: Vec<String>) -> anyhow::Result<i32> {
     let password = a.password.or_else(|| std::env::var("FRIGATE_PASSWORD").ok()).unwrap_or_default();
     let trust = crate::tls::Trust { self_signed: a.insecure, pinned: a.pin.clone(), ..Default::default() };
     let client = Frigate::connect(&url, &a.user, &password, trust)?;
-    if a.insecure && a.pin.is_none() {
-        if let Some(fp) = client.cert_fingerprint() {
+    if a.insecure && a.pin.is_none()
+        && let Some(fp) = client.cert_fingerprint() {
             eprintln!("note: trusting certificate {fp}\n      pass --pin {fp} to require this exact certificate");
         }
-    }
     let cams = client.cameras()?;
 
     if a.list_cameras {

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Frigate Desktop</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -40,14 +40,14 @@
         <strong id="menu-host"></strong>
         <span class="muted small" id="menu-meta"></span>
       </div>
-      <button role="menuitem" id="menu-open-web">Open Frigate in browser</button>
-      <button role="menuitem" id="menu-full">Full screen <kbd>F11</kbd></button>
+      <button role="menuitem" id="menu-open-web" data-needs="open_files">Open Frigate in browser</button>
+      <button role="menuitem" id="menu-full" data-needs="window_fullscreen">Full screen <kbd>F11</kbd></button>
       <button role="menuitem" id="menu-about">About</button>
       <div class="menu-sep"></div>
       <button role="menuitem" id="logout">Disconnect</button>
     </div>
   </div>
-  <div class="winctl" id="winctl">
+  <div class="winctl" id="winctl" data-needs="window_controls">
     <button id="win-min" title="Minimize" aria-label="Minimize"><svg viewBox="0 0 10 10"><path d="M1 5h8"/></svg></button>
     <button id="win-max" title="Maximize" aria-label="Maximize"><svg viewBox="0 0 10 10"><rect x="1.5" y="1.5" width="7" height="7"/></svg></button>
     <button id="win-close" class="close" title="Close" aria-label="Close"><svg viewBox="0 0 10 10"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg></button>
@@ -216,11 +216,12 @@
           <div class="summary" id="estimate"></div>
 
           <div class="field">
-            <span>Save to</span>
-            <div class="row-btn">
+            <span data-needs="choose_folder">Save to</span>
+            <div class="row-btn" data-needs="choose_folder">
               <input id="out-dir" aria-label="Output folder">
-              <button class="btn ghost" id="open-out">Open</button>
+              <button class="btn ghost" id="open-out" data-needs="open_files">Open</button>
             </div>
+            <span class="muted small" data-needs-not="choose_folder">Exports are saved in this app's Files folder.</span>
             <label class="check small"><input type="checkbox" id="delete-after"> Delete the server copy after downloading</label>
           </div>
           <p class="error" id="export-error" hidden></p>
@@ -267,7 +268,8 @@
         <div id="system"><p class="muted">Loading…</p></div>
       </div>
       <div class="card" id="notify-card">
-        <div class="card-head"><h3>Notifications</h3><span class="muted small">Native desktop notifications while the app is running</span></div>
+        <div class="card-head"><h3>Notifications</h3><span class="muted small">Native notifications while the app is running</span></div>
+        <p class="small decode-hint" data-needs-not="background_alerts">On phones, alerts arrive only while the app is open. Background alerts need push notifications, which aren't set up yet.</p>
         <div class="notify">
           <label class="check"><input type="checkbox" id="n-enabled"> <span>Notify me about new alerts</span></label>
           <label class="check"><input type="checkbox" id="n-detections"> <span>Also detections <span class="muted">(can be a lot)</span></span></label>
@@ -363,6 +365,7 @@
 
 <div class="toast" id="toast" hidden></div>
 
+<script src="platform.js"></script>
 <script src="webrtc.js"></script>
 <script src="playback.js"></script>
 <script src="timeline.js"></script>

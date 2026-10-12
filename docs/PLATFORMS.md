@@ -1,0 +1,114 @@
+# Desktop and mobile: one codebase
+
+The app ships on Windows, macOS and Linux today, and is set up to build for
+Android and iOS from the same code. This page is the contract that keeps it
+that way. Read it before adding a feature.
+
+## Layers
+
+```
+ui/                         one interface for every platform (plain HTML/CSS/JS)
+  platform.js               what this device can do → Platform.has("…"), <html data-form / data-compact>
+  app.js, timeline.js, …    features; never check the OS or user agent
+
+src-tauri/src/
+  lib.rs                    run(): the app, shared by desktop and mobile
+  main.rs                   desktop entry only: command-line mode, then run()
+  commands.rs               everything the UI can call (platform-neutral)
+  platform/
+    mod.rs                  Features (what the UI may show) and shared types
+    desktop.rs              Windows / macOS / Linux implementation
+    mobile.rs               Android / iOS implementation (same function signatures)
+  frigate.rs, jobs.rs,      core: Frigate API, exports, local media server,
+  media.rs, mse.rs, tls.rs, live MSE, TLS + certificate pinning, alert watcher,
+  notify.rs, metrics.rs,    load counters, version info. No #[cfg(target_os)] here.
+  about.rs
+  cli.rs                    desktop only (#[cfg(desktop)])
+```
+
+## Rules
+
+1. **Core and commands are platform-neutral.** If you're about to write
+   `#[cfg(target_os = …)]` or `#[cfg(mobile)]` outside `src/platform/`, stop:
+   add a function to the platform API instead.
+2. **The platform API has the same signature on both sides.** Add the function
+   to `desktop.rs` *and* `mobile.rs`. The side that can't do it returns a clear
+   `Err("… isn't available on this device yet.")` rather than not compiling.
+3. **The UI asks for capabilities, not platforms.** Anything the UI should hide
+   or change gets a flag in `platform::Features` (Rust). The UI reads it with
+   `Platform.has("flag")`, or `data-needs="flag"` / `data-needs-not="flag"` on
+   markup. Never `navigator.userAgent`, never `if (os === "android")`.
+4. **Layout keys off `html[data-compact]`** (phones, and desktop windows under
+   700 px), touch tweaks off `html.touch` (coarse pointer). Every hover
+   interaction needs a tap equivalent: hover shows, click/tap acts.
+5. **Dependencies go in the right Cargo section.** Platform-only crates sit under
+   a `[target.'cfg(…)'.dependencies]` table, and their code in `src/platform/`.
+   Prefer pure-Rust crates; anything needing CMake or a system library makes
+   cross-compiling to phones painful (that's why TLS uses ring, not aws-lc).
+6. **Permissions are per platform** in `src-tauri/capabilities/`
+   (`default.json` everywhere, `desktop.json`, `mobile.json`).
+7. **Keep it light.** Background work must stop when nothing is on screen
+   (see the 30 s hidden rule and offscreen tiles), and mobile batteries make this
+   matter more, not less.
+
+## Checking your change
+
+Run all three before committing. CI (`.github/workflows/check.yml`) runs the
+same plus macOS and iOS, which need a Mac.
+
+```sh
+cd src-tauri && cargo test                   # unit tests
+sh dev/cross-check.sh                        # clippy, warnings as errors: Linux, Windows, Android
+for f in ui/*.js; do node --check "$f"; done # UI scripts parse
+```
+
+`dev/cross-check.sh` needs `clang`, `llvm-ar` and
+`rustup target add x86_64-pc-windows-msvc aarch64-linux-android`. It only
+type-checks (nothing is linked), so it runs on a plain Linux box without the
+Windows or Android SDKs.
+
+To see the phone layout without a phone, make the desktop window narrower
+than 700 px: the same `data-compact` layout applies.
+
+## Running each platform
+
+| Platform | One-time setup | Run |
+|---|---|---|
+| Desktop | Rust, and on Linux `libwebkit2gtk-4.1-dev` | `cd src-tauri && cargo run` |
+| Android | Android Studio (SDK + NDK), `cargo install tauri-cli --version "^2"`, `rustup target add aarch64-linux-android`, then `cargo tauri android init` (commit `src-tauri/gen/android`) | `cargo tauri android dev` |
+| iOS | Xcode, the Tauri CLI, `rustup target add aarch64-apple-ios aarch64-apple-ios-sim`, then `cargo tauri ios init` (commit `src-tauri/gen/apple`) | `cargo tauri ios dev` |
+
+The UI is bundled into the app (no dev server), so a phone build works
+offline from your computer. To test against the mock server from a phone on
+the same network: `python3 dev/mock_frigate.py --host 0.0.0.0` and sign in to
+`http://<your computer's IP>:5055`.
+
+On Android the package name is `io.github.frigate_desktop` (Java package
+names can't contain `-`, so Tauri turns the identifier's dash into `_`).
+
+## Feature status by platform
+
+| Feature | Desktop | Android | iOS | Notes |
+|---|---|---|---|---|
+| Live view (WebRTC → MSE → snapshots) | ✅ | expected ✅ | expected ✅ | Android WebView and WKWebView both have WebRTC |
+| Recordings timeline, grid playback | ✅ | expected ✅ | iOS 17.1+ | Player uses (Managed)MediaSource; older iPhones need a native-HLS path (not built) |
+| Pinch to zoom the timeline | ✅ (touchscreens) | ✅ | ✅ | |
+| Clips and timelapses | ✅ | saves to app documents | saves to app documents | No "open"/"show in folder" yet; a share sheet would be the mobile equivalent |
+| Notifications while open | ✅ | ✅ (asks permission) | ✅ (asks permission) | |
+| Notifications in the background | ✅ (app keeps running) | ❌ | ❌ | Needs push (FCM/APNs) through a relay server, or Frigate's own web push |
+| Window controls, F11, folder picker | ✅ | hidden | hidden | via `Features` |
+| Command line (`--url … --camera …`) | ✅ | n/a | n/a | `main.rs` only |
+| Certificate checks | OS store + pinning | Mozilla roots + pinning | OS store + pinning | Android's OS store needs a Java bridge |
+
+"Expected" means it compiles and uses APIs the platform's web view supports,
+but hasn't been run on a device yet. Update this table when you test.
+
+## Mobile to-do, in order
+
+1. Run `cargo tauri android init` / `ios init`, build, sign in, watch live
+   video. Commit the generated `gen/` projects.
+2. iOS below 17.1: play recordings by giving the `<video>` Frigate's HLS URL
+   directly (Safari plays HLS natively); add it as a fallback in `playback.js`.
+3. Exports: share sheet instead of "Show in folder" (`open_files` stays false).
+4. Background alerts: decide between a push relay and Frigate's built-in web
+   push; neither fits in the app alone.

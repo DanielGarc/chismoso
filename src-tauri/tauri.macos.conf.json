@@ -6,8 +6,8 @@
         "title": "Frigate Desktop",
         "width": 1280,
         "height": 820,
-        "minWidth": 820,
-        "minHeight": 560,
+        "minWidth": 360,
+        "minHeight": 480,
         "decorations": true,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true

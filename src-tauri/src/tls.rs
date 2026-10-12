@@ -12,7 +12,6 @@ use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, Server
 use rustls::crypto::{CryptoProvider, verify_tls12_signature, verify_tls13_signature};
 use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
 use rustls::{ClientConfig, DigitallySignedStruct, SignatureScheme};
-use rustls_platform_verifier::BuilderVerifierExt;
 use sha2::{Digest, Sha256};
 use std::sync::{Arc, Mutex};
 
@@ -29,12 +28,18 @@ pub struct Trust {
     pub seen: Arc<Mutex<Option<String>>>,
 }
 
+/// Makes ring the process-wide TLS provider, for anything that asks for the
+/// default instead of using `client_config`. Call once at startup.
+pub fn init() {
+    let _ = rustls::crypto::ring::default_provider().install_default();
+}
+
 pub fn fingerprint(cert: &CertificateDer<'_>) -> String {
     Sha256::digest(cert.as_ref()).iter().map(|b| format!("{b:02X}")).collect::<Vec<_>>().join(":")
 }
 
 pub fn client_config(trust: &Trust) -> Result<ClientConfig, rustls::Error> {
-    let provider = Arc::new(rustls::crypto::aws_lc_rs::default_provider());
+    let provider = Arc::new(rustls::crypto::ring::default_provider());
     let builder = ClientConfig::builder_with_provider(provider.clone()).with_safe_default_protocol_versions()?;
     if trust.self_signed {
         Ok(builder
@@ -42,8 +47,24 @@ pub fn client_config(trust: &Trust) -> Result<ClientConfig, rustls::Error> {
             .with_custom_certificate_verifier(Arc::new(PinnedCert { provider, trust: trust.clone() }))
             .with_no_client_auth())
     } else {
-        Ok(builder.with_platform_verifier()?.with_no_client_auth())
+        system_roots(builder)
     }
+}
+
+/// Normal certificate checking: the OS's own trust store (like a browser).
+#[cfg(not(target_os = "android"))]
+fn system_roots(builder: rustls::ConfigBuilder<ClientConfig, rustls::WantsVerifier>) -> Result<ClientConfig, rustls::Error> {
+    use rustls_platform_verifier::BuilderVerifierExt;
+    Ok(builder.with_platform_verifier()?.with_no_client_auth())
+}
+
+/// Android: the OS store is only reachable through Java, so use Mozilla's
+/// root list (what Firefox ships). Self-signed Frigate certs are pinned above
+/// and don't depend on this.
+#[cfg(target_os = "android")]
+fn system_roots(builder: rustls::ConfigBuilder<ClientConfig, rustls::WantsVerifier>) -> Result<ClientConfig, rustls::Error> {
+    let roots = rustls::RootCertStore { roots: webpki_roots::TLS_SERVER_ROOTS.to_vec() };
+    Ok(builder.with_root_certificates(roots).with_no_client_auth())
 }
 
 #[derive(Debug)]

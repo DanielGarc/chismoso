@@ -7,7 +7,7 @@
 //! Reconnects with backoff; stops on disconnect.
 
 use crate::frigate::Frigate;
-use crate::mse;
+use crate::{mse, platform};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -149,15 +149,15 @@ fn handle(app: &AppHandle, client: &Frigate, text: &str, settings: &Mutex<Settin
         _ => person, // default: only when a person is in it
     };
     if !want_image {
-        let _ = show(&title, &body, None);
+        let _ = platform::notify(app, &title, &body, None);
         return;
     }
     // Fetching the picture takes a moment; don't hold up the socket.
     let detections: Vec<String> = after["data"]["detections"].as_array().into_iter().flatten().filter_map(|x| x.as_str().map(str::to_string)).collect();
-    let (client, camera, id) = (client.clone(), camera.to_string(), id.to_string());
+    let (app, client, camera, id) = (app.clone(), client.clone(), camera.to_string(), id.to_string());
     std::thread::spawn(move || {
         let image = snapshot(&client, &camera, &id, &detections, person);
-        let _ = show(&title, &body, image.as_deref());
+        let _ = platform::notify(&app, &title, &body, image.as_deref());
     });
 }
 
@@ -203,71 +203,6 @@ fn prune(dir: &std::path::Path, keep: usize) {
     files.sort();
     for (_, p) in &files[..files.len() - keep] {
         let _ = std::fs::remove_file(p);
-    }
-}
-
-pub fn test(_app: &AppHandle) -> Result<(), String> {
-    show("Notifications are on", "You'll get a notification like this when Frigate raises an alert.", None)
-}
-
-/// One native notification, with an optional picture. Sent with notify-rust
-/// directly on every desktop OS (it's what Tauri's notification plugin uses
-/// underneath), because the plugin can't attach images and on Windows falls
-/// back to PowerShell's identity unless the app was installed.
-fn show(title: &str, body: &str, image: Option<&str>) -> Result<(), String> {
-    let mut n = notify_rust::Notification::new();
-    n.summary(title).body(body).appname(crate::about::NAME);
-    if let Some(path) = image {
-        n.image_path(path);
-    }
-    #[cfg(windows)]
-    n.app_id(crate::about::IDENTIFIER);
-    #[cfg(target_os = "macos")]
-    {
-        // Notifications belong to the app bundle; a bare binary (cargo run)
-        // borrows Terminal's, as the plugin did.
-        static APP: std::sync::Once = std::sync::Once::new();
-        APP.call_once(|| {
-            let bundled = std::env::current_exe().is_ok_and(|p| p.to_string_lossy().contains(".app/Contents/MacOS"));
-            let _ = notify_rust::set_application(if bundled { crate::about::IDENTIFIER } else { "com.apple.Terminal" });
-        });
-    }
-    #[cfg(all(unix, not(target_os = "macos")))]
-    n.auto_icon(); // the binary's name, which is the icon name the .deb/.rpm installs
-    n.show().map(|_| ()).map_err(|e| e.to_string())
-}
-
-/// Gives the app its own identity for Windows notifications, however it was
-/// installed (or not): registers our AppUserModelID for this user with a
-/// display name and icon, and claims that ID for this process so toasts and
-/// the taskbar agree. The installers' Start-menu shortcut uses the same ID.
-#[cfg(windows)]
-pub mod windows {
-    use winreg::RegKey;
-    use winreg::enums::HKEY_CURRENT_USER;
-
-    const ICON: &[u8] = include_bytes!("../icons/128x128@2x.png");
-
-    pub fn register(app_id: &str, name: &str) {
-        let wide: Vec<u16> = app_id.encode_utf16().chain(Some(0)).collect();
-        // Must happen before the first window opens.
-        unsafe { windows_sys::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID(wide.as_ptr()) };
-        if let Err(e) = write_registration(app_id, name) {
-            eprintln!("couldn't register for notifications: {e}");
-        }
-    }
-
-    fn write_registration(app_id: &str, name: &str) -> std::io::Result<()> {
-        let dir = dirs::data_local_dir().ok_or_else(|| std::io::Error::other("no local app data folder"))?.join(app_id);
-        std::fs::create_dir_all(&dir)?;
-        let icon = dir.join("notification-icon.png");
-        if std::fs::read(&icon).ok().as_deref() != Some(ICON) {
-            std::fs::write(&icon, ICON)?;
-        }
-        let (key, _) = RegKey::predef(HKEY_CURRENT_USER).create_subkey(format!(r"Software\Classes\AppUserModelId\{app_id}"))?;
-        key.set_value("DisplayName", &name)?;
-        key.set_value("IconUri", &icon.to_string_lossy().to_string())?;
-        Ok(())
     }
 }
 
