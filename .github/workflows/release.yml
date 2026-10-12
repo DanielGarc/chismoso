@@ -64,7 +64,7 @@ jobs:
           prev=$(git describe --tags --abbrev=0 --match 'v*' "$TAG^" 2>/dev/null || true)
           if [ -n "$prev" ]; then range="$prev..$TAG"; else range="$TAG"; fi
           lines=$(git log "$range" --no-merges --format='- %s' \
-            | grep -viE '^- (release|website|site|ci|docs?|readme|launch)\b|website|readme|promo' || true)
+            | grep -viE '^- (release|website|site|ci|docs?|readme|launch|add (a real screenshot|promo))\b' || true)
           [ -n "$lines" ] || lines="- Small fixes and improvements."
           { echo 'notes<<CHISMOSO_EOF'; echo "$lines"; echo 'CHISMOSO_EOF'; } >> "$GITHUB_OUTPUT"
       - id: create
@@ -133,11 +133,17 @@ jobs:
           tauriScript: npx --yes @tauri-apps/cli@2
           releaseId: ${{ needs.draft.outputs.id }}
           releaseBody: ${{ needs.draft.outputs.notes }}
-          includeUpdaterJson: true
+          includeUpdaterJson: false # written once, after every build (updater-json.yml)
           args: ${{ matrix.args }}
 
+  manifest:
+    needs: build
+    uses: ./.github/workflows/updater-json.yml
+    with:
+      tag: ${{ inputs.tag || github.ref_name }}
+
   publish:
-    needs: [draft, build]
+    needs: [draft, manifest]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/github-script@v7
