@@ -154,6 +154,12 @@ fn app_info() -> about::Info {
     about::info()
 }
 
+/// Hardware or software video decoding on this computer (Load screen).
+#[tauri::command]
+fn video_decoding() -> about::Decoding {
+    about::decoding()
+}
+
 /// Page-side diagnostics, printed only by debug builds.
 #[tauri::command]
 fn debug_log(msg: String) {
@@ -476,7 +482,6 @@ fn main() {
     notify::windows::register(about::IDENTIFIER, about::NAME);
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_notification::init())
         .manage(AppState::default())
         .setup(|app| {
             let state = app.state::<AppState>();
@@ -525,6 +530,7 @@ fn main() {
             recording_summary,
             review_items,
             app_info,
+            video_decoding,
             debug_log,
             camera_toggle,
             app_load,

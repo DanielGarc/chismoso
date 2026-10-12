@@ -393,3 +393,22 @@ dialog.dlg::backdrop { background: #000a; }
 .about .kv dd { margin: 0; font-variant-numeric: tabular-nums; user-select: text; word-break: break-all; }
 .about .btns { display: flex; justify-content: flex-end; }
 .pb.grid:not(.is-rec) #pb-play { display: none; }
+.tile.parked img { filter: saturate(.6) brightness(.8); }
+.tile.parked .rec-msg { color: var(--text); }
+/* load trends: small multiples, one measure each */
+.trends { display: grid; grid-template-columns: repeat(auto-fill, minmax(max(240px, calc(50% - 6px)), 1fr)); gap: 12px; }
+@media (max-width: 760px) { .trends { grid-template-columns: 1fr; } }
+.trend { margin: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 10px 4px; min-width: 0; }
+.trend figcaption { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.trend figcaption small { color: var(--muted); font-weight: 400; }
+.trend-plot { position: relative; }
+.trend-svg { display: block; overflow: visible; }
+.trend-svg .grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 4; }
+.trend-svg .base { stroke: #2c3a52; stroke-width: 1; }
+.trend-svg .ax { fill: var(--muted); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.trend-svg .line { fill: none; stroke: var(--accent-2); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.trend-svg .area { fill: var(--accent); opacity: .16; }
+.trend-svg .dot { fill: var(--accent-2); stroke: var(--bg); stroke-width: 2; }
+.trend-svg .cross { stroke: var(--muted); stroke-width: 1; }
+.trend-tip { position: absolute; top: -4px; padding: 3px 8px; border-radius: 6px; background: var(--panel-2); border: 1px solid var(--line); font-size: 12px; white-space: nowrap; pointer-events: none; font-variant-numeric: tabular-nums; }
+.decode-hint { color: #fcd34d; margin: 10px 0 0; }

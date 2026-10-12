@@ -136,8 +136,19 @@ def review_message(camera="doorbell", severity="alert"):
     now = time.time()
     after = {"id": f"live-{int(now)}", "camera": camera, "severity": severity, "start_time": now, "end_time": None,
              "thumb_path": "/media/frigate/clips/review/thumb.jpg",
-             "data": {"objects": ["person"], "sub_labels": [], "zones": ["porch"], "audio": []}}
+             "data": {"objects": ["person"], "sub_labels": [], "zones": ["porch"], "audio": [],
+                      "detections": [f"{now:.6f}-car", f"{now:.6f}-person"]}}
     return json.dumps({"topic": "reviews", "payload": json.dumps({"type": "new", "before": after, "after": after})})
+
+
+async def event_json(request):
+    eid = request.match_info["id"]
+    return web.json_response({"id": eid, "label": "person" if eid.endswith("person") else "car", "camera": "doorbell"})
+
+
+async def event_snapshot(request):
+    log("event_snapshot", id=request.match_info["id"])
+    return web.FileResponse(MEDIA / "doorbell.jpg", headers={"Content-Type": "image/jpeg"})
 
 
 async def debug_review(request):
@@ -198,6 +209,7 @@ async def stats(_):
 
 async def latest(request):
     cam = request.match_info["camera"]
+    log("snapshot", camera=cam, path=request.path, h=request.query.get("h") or request.query.get("height"))
     if cam not in CAMERAS:
         return web.json_response({"success": False, "message": "Camera not found"}, status=404)
     return web.FileResponse(MEDIA / f"{cam}.jpg", headers={"Content-Type": "image/jpeg"})
@@ -485,6 +497,9 @@ def main():
     r.add_get("/api/go2rtc/streams", go2rtc_streams)
     r.add_get("/debug/requests", debug_requests)
     r.add_get("/debug/review", debug_review)
+    r.add_get("/api/events/{id}/snapshot.jpg", event_snapshot)
+    r.add_get("/api/events/{id}", event_json)
+    r.add_get("/api/{camera}/recordings/{t}/snapshot.jpg", latest)
 
     ctx = None
     if a.tls:

@@ -149,6 +149,7 @@ async function enterApp() {
   pollStats();
   clearInterval(state.statsTimer);
   state.statsTimer = setInterval(pollStats, 10000);
+  startLoadRecorder();
   showView("live");
 }
 
@@ -156,7 +157,7 @@ async function leave(message) {
   closeMenu();
   closeFocus(true); endGridRec(); stopGrid();
   timeline?.clearCache();
-  clearInterval(state.statsTimer); clearInterval(state.snapTimer); clearInterval(state.loadTimer);
+  clearInterval(state.statsTimer); clearInterval(state.snapTimer); clearInterval(state.loadTimer); stopLoadRecorder();
   await invoke("disconnect").catch(() => {});
   state.info = null; state.stats = null; state.cfgOriginal = ""; cfg.value = "";
   $("#tabs").hidden = true;
@@ -184,13 +185,14 @@ $$(".tab[data-view]").forEach((b) => b.addEventListener("click", () => showView(
 function showView(v) {
   state.view = v;
   $$(".tab[data-view]").forEach((b) => b.classList.toggle("active", b.dataset.view === v));
-  for (const id of ["live", "exports", "settings"]) $("#view-" + id).hidden = id !== v;
+  for (const id of ["live", "exports", "load", "settings"]) $("#view-" + id).hidden = id !== v;
   $("#live-tools").hidden = v !== "live" || !!state.focus;
   if (v === "live") { if (!state.focus) startGrid(); }
   else { endGridRec(); stopGrid(); closeFocus(true); }
   if (v === "exports") refreshExports();
   clearInterval(state.loadTimer);
   if (v === "settings") loadSettings();
+  if (v === "load") showLoad();
 }
 
 function closeMenu() { $("#server-menu").hidden = true; $("#server-chip").setAttribute("aria-expanded", "false"); }
@@ -209,7 +211,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeMenu();
   if (e.key === "F11") { e.preventDefault(); toggleWindowFullscreen(); }
   if (!state.info || !(e.ctrlKey || e.metaKey)) return;
-  const v = { 1: "live", 2: "exports", 3: "settings" }[e.key];
+  const v = { 1: "live", 2: "exports", 3: "load", 4: "settings" }[e.key];
   if (v) { e.preventDefault(); showView(v); }
 });
 
@@ -219,6 +221,39 @@ document.addEventListener("visibilitychange", () => {
   pollStats();
   if (state.view === "live" && !state.focus && !state.gridRec) refreshSnapshots();
 });
+
+// Minimised or hidden for 30 s: close live streams (snapshots already pause).
+// They come back when the window does. Saves bandwidth and go2rtc's work.
+let sleptLive = false, hiddenSince = null;
+// The page's visibility covers hidden tabs and most minimising; some Linux
+// window managers don't report it, so also ask the window itself.
+async function checkHidden() {
+  if (!state.info) return;
+  let minimized = false;
+  try { minimized = await appWindow().isMinimized(); } catch (_) {}
+  const hidden = document.hidden || minimized;
+  if (!hidden) { hiddenSince = null; if (sleptLive) wakeLive(); return; }
+  hiddenSince ??= Date.now();
+  if (!sleptLive && Date.now() - hiddenSince >= 30000) sleepLive();
+}
+setInterval(checkHidden, 5000);
+document.addEventListener("visibilitychange", checkHidden);
+function sleepLive() {
+  if (!state.info || state.view !== "live") return;
+  if (state.focus) {
+    if (state.focus.mode === "live" && state.focus.rtc) { stopLive(state.focus); sleptLive = "focus"; }
+  } else if (!state.gridRec && [...state.tiles.values()].some((t) => t.rtc || t.ctrl)) {
+    for (const t of state.tiles.values()) { t.ctrl?.abort(); t.ctrl = null; if (t.rtc) { t.rtc.close(); t.rtc = null; } t.video.hidden = true; t.img.hidden = false; }
+    sleptLive = "grid";
+  }
+}
+function wakeLive() {
+  const was = sleptLive;
+  sleptLive = false;
+  if (!state.info || state.view !== "live") return;
+  if (was === "focus" && state.focus?.mode === "live") startLive();
+  else if (was === "grid" && !state.focus && !state.gridRec) startGrid();
+}
 
 // ══ Layouts (which cameras the grid shows) ══════════════════════════
 const isAdmin = () => state.info?.role === "admin";
@@ -329,9 +364,22 @@ $("#lay-delete").addEventListener("click", async () => {
 });
 
 // ══ Live: grid ══════════════════════════════════════════════════════
+// Tiles scrolled out of view don't stream or fetch snapshots.
+const tileObserver = new IntersectionObserver((entries) => {
+  for (const e of entries) {
+    const entry = [...state.tiles].find(([, t]) => t.el === e.target);
+    if (!entry) continue;
+    const [name, t] = entry;
+    t.visible = e.isIntersecting;
+    if (!t.visible && t.rtc && !state.focus) { t.ctrl?.abort(); t.ctrl = null; t.rtc.close(); t.rtc = null; t.video.hidden = true; t.img.hidden = false; }
+    else if (t.visible && !state.focus && !state.gridRec && state.view === "live" && prefs.gridLive && Live.supported() && !sleptLive) startTileVideo(name, t);
+  }
+}, { root: $("#grid"), threshold: 0.05 });
+
 function buildGrid() {
   const resume = state.gridRec && pb.active ? pb.t : null;
   endGridRec();
+  tileObserver.disconnect();
   const grid = $("#grid");
   grid.replaceChildren();
   state.tiles.clear();
@@ -342,12 +390,17 @@ function buildGrid() {
     const fps = h("span", { class: "fps" });
     const dot = h("span", { class: "state" });
     const recMsg = h("span", { class: "rec-msg" });
-    // Clicking a tile opens that camera, at the same moment if we're playing back.
-    const el = h("div", { class: "tile", onclick: () => openFocus(cam.name, 0, state.gridRec && pb.active ? pb.t : null) },
+    // Clicking a tile opens that camera, at the same moment if we're playing
+    // back. A tile parked during grid playback starts playing instead.
+    const el = h("div", { class: "tile", onclick: () => {
+      if (state.gridRec && state.parked?.has(cam.name)) return promoteTile(cam.name);
+      openFocus(cam.name, 0, state.gridRec && pb.active ? pb.t : null);
+    } },
       img, video, h("div", { class: "empty" }, "Loading…"), recMsg,
       h("div", { class: "label" }, dot, cam.friendly_name, fps));
     grid.append(el);
-    state.tiles.set(cam.name, { el, img, video, dot, fps, recMsg, rtc: null, ctrl: null });
+    state.tiles.set(cam.name, { el, img, video, dot, fps, recMsg, rtc: null, ctrl: null, visible: true });
+    tileObserver.observe(el);
   }
   if (!state.tiles.size) grid.append(h("p", { class: "muted" }, "This layout has no cameras."));
   applyCols();
@@ -372,7 +425,7 @@ function startGrid() {
   getTimeline();
   startTicker();
   if (prefs.gridLive && Live.supported()) {
-    for (const [name, t] of state.tiles) startTileVideo(name, t);
+    for (const [name, t] of state.tiles) if (t.visible) startTileVideo(name, t);
   }
   refreshSnapshots();
   clearInterval(state.snapTimer);
@@ -396,33 +449,39 @@ async function startTileVideo(name, t) {
   const ctrl = t.ctrl = new AbortController();
   const cam = camByName(name);
   // Prefer a second (usually lower-resolution) stream for the grid when configured.
-  const stream = (cam.streams[1] || cam.streams[0])[1];
+  const stream = gridStream(cam);
   try {
     const rtc = await Live.play(t.video, stream, { signal: ctrl.signal });
     if (ctrl.signal.aborted) return rtc.close();
-    t.rtc = rtc; t.counter = frameCounter(t.video); t.liveFps = null; paintTileStats();
-    t.video.hidden = false; t.img.hidden = true;
-    t.el.querySelector(".empty").hidden = true;
-    rtc.onDrop = () => { // fall back to snapshots instead of freezing
-      if (t.rtc !== rtc) return;
-      rtc.close(); t.rtc = null; t.ctrl = null;
-      t.video.hidden = true; t.img.hidden = false;
-    };
+    attachTileRtc(t, rtc);
   } catch (_) { /* stays on snapshots */ }
   finally { if (t.ctrl === ctrl && !t.rtc) t.ctrl = null; }
 }
+
+function attachTileRtc(t, rtc) {
+  t.rtc = rtc; t.counter = frameCounter(t.video); t.liveFps = null; paintTileStats();
+  t.video.hidden = false; t.img.hidden = true;
+  t.el.querySelector(".empty").hidden = true;
+  rtc.onDrop = () => { // fall back to snapshots instead of freezing
+    if (t.rtc !== rtc) return;
+    rtc.close(); t.rtc = null; t.ctrl = null;
+    t.video.hidden = true; t.img.hidden = false;
+  };
+}
+const gridStream = (cam) => (cam.streams[1] || cam.streams[0])[1];
 
 let snapBusy = false;
 async function refreshSnapshots() {
   if (snapBusy || document.hidden || state.view !== "live" || state.focus || state.gridRec) return;
   snapBusy = true;
-  const width = prefs.cols === 1 ? 1280 : 640;
-  await Promise.all([...state.tiles].filter(([, t]) => !t.rtc).map(([name, t]) => new Promise((res) => {
+  await Promise.all([...state.tiles].filter(([, t]) => !t.rtc && t.visible).map(([name, t]) => new Promise((res) => {
+    // Ask for the size the tile shows (in steps, so Frigate isn't asked for odd sizes).
+    const px = Math.min(1080, Math.max(180, Math.ceil(t.el.clientHeight * (window.devicePixelRatio || 1) / 90) * 90));
     const next = new Image();
     const done = setTimeout(res, 8000); // a hung request must not stall the whole grid
     next.onload = () => { clearTimeout(done); t.img.src = next.src; t.el.querySelector(".empty").hidden = true; res(); };
     next.onerror = () => { clearTimeout(done); t.el.querySelector(".empty").textContent = "No image"; res(); };
-    next.src = media(`/api/${encodeURIComponent(name)}/latest.jpg?h=${Math.round(width * 9 / 16)}&t=${Date.now()}`);
+    next.src = media(`/api/${encodeURIComponent(name)}/latest.jpg?h=${px}&quality=70&t=${Date.now()}`);
   })));
   snapBusy = false;
 }
@@ -526,12 +585,55 @@ function rescope() {
 }
 
 // Point the player at the cameras in view (no-op if already there).
+// Grid playback plays at most MAX_PLAYING cameras at once (each one pulls a
+// full-resolution recording from Frigate); the rest are "parked" and show a
+// still from the recordings every few seconds until clicked.
+const MAX_PLAYING = 4;
 function ensurePlayers() {
-  const key = (state.focus ? "f:" : "g:") + scopeCams().join("|");
-  if (pb.key === key) return;
-  pb.key = key;
-  if (state.focus) pb.setCameras([{ name: state.focus.cam, video: focusVideo }]);
-  else pb.setCameras([...state.tiles].map(([name, t]) => ({ name, video: t.video })));
+  if (state.focus) {
+    const key = "f:" + state.focus.cam;
+    if (pb.key === key) return;
+    pb.key = key;
+    return pb.setCameras([{ name: state.focus.cam, video: focusVideo }]);
+  }
+  const names = [...state.tiles.keys()];
+  if (!state.playing || state.playing.some((n) => !state.tiles.has(n))) {
+    const visible = names.filter((n) => state.tiles.get(n).visible);
+    state.playing = [...visible, ...names.filter((n) => !visible.includes(n))].slice(0, MAX_PLAYING);
+  }
+  state.parked = new Set(names.filter((n) => !state.playing.includes(n)));
+  const key = "g:" + state.playing.join("|");
+  if (pb.key !== key) {
+    pb.key = key;
+    pb.setCameras(state.playing.map((name) => ({ name, video: state.tiles.get(name).video }))); // clears old overlays
+  }
+  for (const [name, t] of state.tiles) {
+    const parked = state.parked.has(name);
+    t.el.classList.toggle("parked", parked);
+    t.video.hidden = parked; t.img.hidden = !parked;
+    if (parked) { t.recMsg.textContent = "Paused to save bandwidth · click to play"; t.stillAt = null; }
+  }
+}
+
+// Parked tiles: a still from the recordings at the playhead, every few seconds.
+function refreshParked(now) {
+  if (!state.parked?.size || pb.t == null) return;
+  for (const name of state.parked) {
+    const t = state.tiles.get(name);
+    if (!t?.visible || (t.stillAt && now - t.stillAt < 4000)) continue;
+    t.stillAt = now;
+    const px = Math.min(720, Math.max(180, Math.ceil(t.el.clientHeight * (window.devicePixelRatio || 1) / 90) * 90));
+    const next = new Image();
+    next.onload = () => { if (state.parked?.has(name)) t.img.src = next.src; };
+    next.src = media(`/api/${encodeURIComponent(name)}/recordings/${pb.t.toFixed(1)}/snapshot.jpg?height=${px}`);
+  }
+}
+
+// Swap a parked tile in (the longest-playing one makes room).
+function promoteTile(name) {
+  const at = pb.t ?? Date.now() / 1000 - 60;
+  state.playing = [...state.playing.filter((n) => n !== name), name].slice(-MAX_PLAYING);
+  playAt(at);
 }
 
 pb.onStatus = (p, msg) => {
@@ -548,6 +650,13 @@ pb.onError = (e) => { if (state.focus) { $("#focus-msg").textContent = errText(e
 
 async function openFocus(name, streamIdx = 0, at = null) {
   const cam = camByName(name);
+  // Same go2rtc stream already playing in the tile? Take that connection
+  // instead of opening another (instant, and one less viewer on go2rtc).
+  const tile = state.tiles.get(name);
+  let handoff = null;
+  if (at == null && tile?.rtc?.kind === "webrtc" && tile.rtc.stream === cam.streams[streamIdx][1]) {
+    handoff = tile.rtc; tile.rtc = null; tile.ctrl = null;
+  }
   endGridRec();
   stopGrid();
   closeFocus(true);
@@ -572,7 +681,7 @@ async function openFocus(name, streamIdx = 0, at = null) {
   $("#pb-date").value = "";
   startTicker();
   if (at != null) return playAt(at);
-  await startLive();
+  await startLive(handoff);
 }
 
 function stopLive(f) {
@@ -581,9 +690,9 @@ function stopLive(f) {
   clearInterval(f.timer); f.timer = null;
 }
 
-async function startLive() {
+async function startLive(handoff = null) {
   const focus = state.focus;
-  if (!focus) return;
+  if (!focus) { handoff?.close(); return; }
   pb.close(); pb.key = null;
   stopLive(focus);
   focus.mode = "live";
@@ -594,7 +703,9 @@ async function startLive() {
   badge.className = "badge"; badge.textContent = "connecting…";
   const ctrl = focus.liveCtrl = new AbortController();
   try {
-    const rtc = await Live.play(focusVideo, cam.streams[focus.streamIdx][1], { signal: ctrl.signal });
+    let rtc = handoff;
+    if (rtc) rtc.moveTo(focusVideo);
+    else rtc = await Live.play(focusVideo, cam.streams[focus.streamIdx][1], { signal: ctrl.signal });
     if (ctrl.signal.aborted) return rtc.close();
     focus.rtc = rtc;
     focus.ticks = 0;
@@ -625,9 +736,11 @@ function endGridRec() {
   state.gridRec = false;
   playGen++;
   pb.close(); pb.key = null;
+  state.playing = null; state.parked = null;
   $("#grid").classList.remove("is-rec");
   for (const t of state.tiles.values()) {
     t.recMsg.textContent = "";
+    t.el.classList.remove("parked");
     t.video.hidden = true; t.img.hidden = false;
   }
 }
@@ -698,6 +811,7 @@ function startTicker() {
     if (document.hidden || !timeline) return;
     if (recMode()) {
       pb.tick();
+      if (!state.focus) refreshParked(Date.now());
       const wt = pb.t;
       if (wt && pb.active) {
         timeline.setPlayhead(wt, false);
@@ -949,6 +1063,13 @@ function closeFocus(silent) {
   const f = state.focus;
   if (!f) return;
   const resume = f.mode === "rec" && pb.active ? pb.t : null;
+  // Going back to a live grid: hand this connection back to the tile if it
+  // shows the same stream.
+  let giveBack = null;
+  const cam = camByName(f.cam), tile = state.tiles.get(f.cam);
+  if (!silent && f.mode === "live" && f.rtc?.kind === "webrtc" && tile && prefs.gridLive && f.rtc.stream === gridStream(cam)) {
+    giveBack = f.rtc; f.rtc = null;
+  }
   stopLive(f);
   pb.close(); pb.key = null;
   clearSelection();
@@ -962,6 +1083,7 @@ function closeFocus(silent) {
   $("#live-tools").hidden = false;
   rescope();
   setPlaybackUi();
+  if (giveBack) { giveBack.moveTo(tile.video); attachTileRtc(tile, giveBack); }
   if (resume) playAt(resume); else startGrid();
 }
 
@@ -1324,7 +1446,6 @@ async function loadSettings() {
   renderSystem();
   pollStats();
   renderCameraSwitches();
-  startLoadMeter();
   const admin = state.info.role === "admin";
   $("#config-card").hidden = !admin;
   $("#config-noadmin").hidden = admin;
@@ -1419,50 +1540,100 @@ $("#restart").addEventListener("click", async () => {
   catch (e) { toast(errText(e), true); }
 });
 
-// ══ Load meter: what this app asks of Frigate ═══════════════════════
+// ══ Load: what this app asks of Frigate, now and over time ══════════
 // Rust counts every request and byte it moves (API, snapshots, videos, MSE
-// live); the web view reports WebRTC bytes. Shown as rates over the last
-// minute, next to Frigate's own CPU and go2rtc's viewer count.
-const loadSamples = [];
-function startLoadMeter() {
-  clearInterval(state.loadTimer);
-  sampleLoad();
-  state.loadTimer = setInterval(sampleLoad, 5000);
+// live); the web view reports WebRTC bytes. A sampler runs while connected
+// (cheap: two local calls every 5 s, plus go2rtc's viewer list once a minute,
+// every 10 s while the Load screen is open) and keeps per-minute totals for
+// 24 hours in local storage, per server.
+const LOAD_KEEP_MS = 24 * 3600e3;
+const load = { timer: null, key: null, prev: null, recent: [], minutes: [], cur: null, viewers: null, viewersAt: 0, cpu: null, hours: 1 };
+
+function startLoadRecorder() {
+  stopLoadRecorder();
+  load.key = "load:" + state.info.base_url;
+  try { load.minutes = JSON.parse(localStorage.getItem(load.key) || "[]").filter((m) => m.t > Date.now() - LOAD_KEEP_MS); }
+  catch (_) { load.minutes = []; }
+  Object.assign(load, { prev: null, recent: [], cur: null, viewers: null, viewersAt: 0 });
+  load.timer = setInterval(loadTick, 5000);
+  loadTick();
 }
-async function sampleLoad() {
-  if (state.view !== "settings" || !state.info) return clearInterval(state.loadTimer);
-  if (document.hidden) return;
-  const [m, rtc, viewers] = await Promise.all([
-    invoke("app_load"), WebRTC.bytesReceived(), call("go2rtc_viewers").catch(() => null),
-  ]);
+function stopLoadRecorder() {
+  clearInterval(load.timer); load.timer = null;
+  closeMinute();
+}
+function saveLoad() {
+  try { localStorage.setItem(load.key, JSON.stringify(load.minutes)); } catch (_) {}
+}
+function closeMinute() {
+  const c = load.cur;
+  if (!c || !load.key) return;
+  load.minutes.push({ t: c.t, req: c.req, mb: +c.mb.toFixed(3), streams: c.streams, cpu: c.cpuN ? +(c.cpu / c.cpuN).toFixed(1) : null, viewers: c.viewers });
+  const cutoff = Date.now() - LOAD_KEEP_MS;
+  while (load.minutes.length && load.minutes[0].t < cutoff) load.minutes.shift();
+  load.cur = null;
+  saveLoad();
+}
+
+async function loadTick() {
+  if (!state.info) return;
   const now = Date.now();
-  loadSamples.push({ t: now, req: m.api_requests + m.media_requests, bytes: m.api_bytes + m.media_bytes + m.live_bytes, rtc });
-  while (loadSamples.length > 2 && now - loadSamples[0].t > 65000) loadSamples.shift();
-  renderLoad(m, viewers);
-}
-function renderLoad(m, viewers) {
-  const box = $("#load");
-  const stat = (k, v, sub) => h("div", { class: "stat" }, h("div", { class: "k" }, k), h("div", { class: "v" }, v, sub ? h("small", {}, " " + sub) : null));
-  const first = loadSamples[0], last = loadSamples[loadSamples.length - 1];
-  const mins = (last.t - first.t) / 60000;
-  const items = [];
-  if (mins < 0.05) items.push(stat("Requests to Frigate", "…", "measuring"));
-  else {
-    const req = (last.req - first.req) / mins;
+  const [m, rtc] = await Promise.all([invoke("app_load"), WebRTC.bytesReceived()]);
+  if (now - load.viewersAt > (state.view === "load" ? 10000 : 60000)) {
+    load.viewersAt = now;
+    load.viewers = await call("go2rtc_viewers").catch(() => null);
+  }
+  const sample = { t: now, req: m.api_requests + m.media_requests, bytes: m.api_bytes + m.media_bytes + m.live_bytes, rtc, m };
+  const streams = m.live_streams + WebRTC.count();
+  const cpuRaw = state.stats?.cpu_usages?.["frigate.full_system"]?.cpu;
+  const cpu = cpuRaw == null ? null : parseFloat(cpuRaw);
+  const viewers = load.viewers ? load.viewers.reduce((a, [, n]) => a + n, 0) : null;
+  const p = load.prev;
+  if (p) {
+    const dReq = Math.max(0, sample.req - p.req);
     // WebRTC totals drop when a connection closes; never count that as negative.
-    const bytes = (last.bytes - first.bytes) + Math.max(0, last.rtc - first.rtc);
-    const mbMin = bytes / mins / 1e6;
+    const dBytes = Math.max(0, sample.bytes - p.bytes) + Math.max(0, rtc - p.rtc);
+    const minute = Math.floor(now / 60000) * 60000;
+    if (load.cur && load.cur.t !== minute) closeMinute();
+    const c = load.cur ??= { t: minute, req: 0, mb: 0, streams: 0, cpu: 0, cpuN: 0, viewers: null };
+    c.req += dReq; c.mb += dBytes / 1e6;
+    c.streams = Math.max(c.streams, streams);
+    if (cpu != null && !isNaN(cpu)) { c.cpu += cpu; c.cpuN++; }
+    if (viewers != null) c.viewers = Math.max(c.viewers ?? 0, viewers);
+    load.recent.push({ t: now, req: dReq, bytes: dBytes });
+    while (load.recent.length && now - load.recent[0].t > 60000) load.recent.shift();
+  }
+  load.prev = sample;
+  if (state.view === "load" && !document.hidden) renderLoadNow(m, streams, cpuRaw), renderTrends();
+}
+
+function showLoad() {
+  renderLoadNow(load.prev?.m, null, state.stats?.cpu_usages?.["frigate.full_system"]?.cpu);
+  renderTrends();
+  load.viewersAt = 0; // fresh viewer count now
+  loadTick();
+  invoke("video_decoding").then(renderDecode).catch(() => {});
+}
+
+function renderLoadNow(m, streams, cpu) {
+  const box = $("#load");
+  if (!m) return;
+  const stat = (k, v, sub) => h("div", { class: "stat" }, h("div", { class: "k" }, k), h("div", { class: "v" }, v, sub ? h("small", {}, " " + sub) : null));
+  const span = load.recent.length ? (Date.now() - load.recent[0].t + 5000) / 60000 : 0;
+  const items = [];
+  if (span < 0.15) items.push(stat("Requests to Frigate", "…", "measuring"));
+  else {
+    const req = load.recent.reduce((a, x) => a + x.req, 0) / span;
+    const mbMin = load.recent.reduce((a, x) => a + x.bytes, 0) / span / 1e6;
     items.push(stat("Requests to Frigate", Math.round(req), "per min"));
     items.push(stat("Data from Frigate", mbMin < 10 ? mbMin.toFixed(1) : Math.round(mbMin), `MB/min · ${(mbMin * 8 / 60).toFixed(1)} Mbit/s`));
   }
-  items.push(stat("Live streams open", m.live_streams + WebRTC.count(), `MSE ${m.live_streams} · WebRTC ${WebRTC.count()}`));
-  const cpu = state.stats?.cpu_usages?.["frigate.full_system"]?.cpu;
+  const open = streams ?? m.live_streams + WebRTC.count();
+  items.push(stat("Live streams open", open, `MSE ${m.live_streams} · WebRTC ${WebRTC.count()}`));
   if (cpu != null) items.push(stat("Server CPU", `${cpu}%`, "whole system"));
-  if (viewers) {
-    const total = viewers.reduce((a, [, n]) => a + n, 0);
-    items.push(stat("go2rtc viewers", total, "all clients"));
-  }
-  const busy = (viewers || []).filter(([, n]) => n > 0);
+  const v = load.viewers;
+  if (v) items.push(stat("go2rtc viewers", v.reduce((a, [, n]) => a + n, 0), "all clients"));
+  const busy = (v || []).filter(([, n]) => n > 0);
   box.replaceChildren(...[
     h("div", { class: "sys-grid" }, items),
     busy.length ? h("p", { class: "muted small" }, "Watching now: ", busy.map(([s, n]) => `${s} (${n})`).join(", ")) : null,
@@ -1470,10 +1641,113 @@ function renderLoad(m, viewers) {
   ].filter(Boolean));
 }
 
+// One small chart per measure (they have different units, so no shared axis).
+const TRENDS = [
+  { key: "req", title: "Requests to Frigate", unit: "per min", fmt: (v) => Math.round(v) },
+  { key: "mb", title: "Data from Frigate", unit: "MB/min", fmt: (v) => (v < 10 ? v.toFixed(1) : Math.round(v)) },
+  { key: "streams", title: "Live streams open", unit: "", fmt: (v) => Math.round(v), max: true },
+  { key: "cpu", title: "Server CPU", unit: "%", fmt: (v) => Math.round(v), ceil: 100 },
+  { key: "viewers", title: "go2rtc viewers", unit: "all clients", fmt: (v) => Math.round(v), max: true },
+];
+$$("#trend-range button").forEach((b) => b.addEventListener("click", () => {
+  load.hours = +b.dataset.h;
+  $$("#trend-range button").forEach((x) => x.classList.toggle("on", x === b));
+  renderTrends();
+}));
+new ResizeObserver(() => state.view === "load" && renderTrends()).observe($("#trends"));
+
+// Minutes -> buckets (1, 5 or 15 min) of averages (peaks for counts).
+function trendSeries(key, useMax, hours) {
+  const step = hours <= 1 ? 1 : hours <= 6 ? 5 : 15;
+  const end = Date.now(), start = end - hours * 3600e3;
+  const buckets = new Map();
+  for (const m of load.minutes) {
+    if (m.t < start || m[key] == null) continue;
+    const b = Math.floor(m.t / (step * 60000)) * step * 60000;
+    const e = buckets.get(b) || { t: b, sum: 0, n: 0, max: 0 };
+    e.sum += m[key]; e.n++; e.max = Math.max(e.max, m[key]);
+    buckets.set(b, e);
+  }
+  return { step, start, end, pts: [...buckets.values()].sort((p, q) => p.t - q.t).map((e) => ({ t: e.t + step * 30000, v: useMax ? e.max : e.sum / e.n })) };
+}
+
+function renderTrends() {
+  const box = $("#trends");
+  const width = Math.max(240, Math.floor((box.clientWidth - 12) / (box.clientWidth > 760 ? 2 : 1)));
+  if (!load.minutes.length) {
+    box.replaceChildren(h("p", { class: "muted" }, "Collecting… the first point appears after a minute. History builds up while the app is open."));
+    return;
+  }
+  box.replaceChildren(...TRENDS.map((d) => trendChart(d, trendSeries(d.key, d.max, load.hours), width)));
+}
+
+function trendChart(d, { step, start, end, pts }, W) {
+  const H = 132, L = 36, R = 10, T = 10, B = 22;
+  const ns = "http://www.w3.org/2000/svg";
+  const el = (tag, attrs) => { const n = document.createElementNS(ns, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; };
+  const peak = pts.reduce((a, p) => Math.max(a, p.v), 0);
+  const nice = (v) => { if (v <= 1) return 1; const e = 10 ** Math.floor(Math.log10(v)); return [1, 2, 2.5, 5, 10].map((m) => m * e).find((m) => m >= v); };
+  const top = d.ceil && peak > d.ceil * 0.5 ? d.ceil : nice(peak * 1.1);
+  const x = (t) => L + (t - start) / (end - start) * (W - L - R);
+  const y = (v) => T + (1 - v / top) * (H - T - B);
+  const svg = el("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}`, class: "trend-svg", role: "img", "aria-label": `${d.title}, last ${load.hours} h` });
+  const ticks = [0, top / 2, top].filter((v, i, a) => (!d.max || Number.isInteger(v)) && (i === 0 || d.fmt(v) !== d.fmt(a[i - 1])));
+  for (const v of ticks) {
+    svg.append(el("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), class: v ? "grid" : "base" }));
+    const lab = el("text", { x: L - 6, y: y(v) + 4, class: "ax", "text-anchor": "end" }); lab.textContent = d.fmt(v); svg.append(lab);
+  }
+  const fmtT = (t) => new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  [[start, "start"], [(start + end) / 2, "middle"], [end, "end"]].forEach(([t, anchor]) => {
+    const lab = el("text", { x: x(t), y: H - 6, class: "ax", "text-anchor": anchor }); lab.textContent = t === end ? "now" : fmtT(t); svg.append(lab);
+  });
+  // Runs of consecutive buckets; a gap (app closed) breaks the line.
+  const runs = [];
+  for (const p of pts) {
+    const last = runs[runs.length - 1];
+    if (last && p.t - last[last.length - 1].t <= step * 60000 * 1.5) last.push(p); else runs.push([p]);
+  }
+  for (const r of runs) {
+    const line = r.map((p, i) => `${i ? "L" : "M"}${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join("");
+    if (r.length > 1) svg.append(el("path", { d: `${line}L${x(r[r.length - 1].t).toFixed(1)},${y(0)}L${x(r[0].t).toFixed(1)},${y(0)}Z`, class: "area" }));
+    svg.append(el("path", { d: line, class: "line" }));
+    if (r.length === 1) svg.append(el("circle", { cx: x(r[0].t), cy: y(r[0].v), r: 3, class: "dot" }));
+  }
+  const cross = el("line", { y1: T, y2: H - B, class: "cross", visibility: "hidden" });
+  const mark = el("circle", { r: 4, class: "dot hover", visibility: "hidden" });
+  svg.append(cross, mark);
+  const tip = h("div", { class: "trend-tip", hidden: true });
+  svg.addEventListener("pointermove", (e) => {
+    if (!pts.length) return;
+    const r = svg.getBoundingClientRect(), mx = e.clientX - r.left;
+    const p = pts.reduce((b, q) => (Math.abs(x(q.t) - mx) < Math.abs(x(b.t) - mx) ? q : b));
+    cross.setAttribute("x1", x(p.t)); cross.setAttribute("x2", x(p.t)); cross.setAttribute("visibility", "visible");
+    mark.setAttribute("cx", x(p.t)); mark.setAttribute("cy", y(p.v)); mark.setAttribute("visibility", "visible");
+    const span = step > 1 ? ` (${step}-min ${d.max ? "peak" : "average"})` : "";
+    tip.textContent = `${fmtT(p.t)}${span} · ${d.fmt(p.v)} ${d.unit}`.trim();
+    tip.hidden = false;
+    tip.style.left = `${Math.min(W - 170, Math.max(0, x(p.t) - 80))}px`;
+  });
+  svg.addEventListener("pointerleave", () => { cross.setAttribute("visibility", "hidden"); mark.setAttribute("visibility", "hidden"); tip.hidden = true; });
+  const latest = pts.length ? pts[pts.length - 1].v : null;
+  return h("figure", { class: "trend" },
+    h("figcaption", {}, h("span", {}, d.title, d.unit ? h("small", {}, " " + d.unit) : null),
+      h("span", { class: "muted small" }, latest == null ? "no data" : `now ${d.fmt(latest)} · peak ${d.fmt(peak)}`)),
+    h("div", { class: "trend-plot" }, svg, tip));
+}
+
+function renderDecode(dec) {
+  const label = dec.hardware === true ? "Hardware" : dec.hardware === false ? "Software" : "Unknown";
+  $("#decode").replaceChildren(
+    h("div", { class: "sys-grid" }, h("div", { class: "stat" }, h("div", { class: "k" }, "Video decoding"),
+      h("div", { class: "v" }, label, h("small", {}, " " + dec.detail)))),
+    dec.hint ? h("p", { class: "small decode-hint" }, dec.hint) : null,
+  );
+}
+
 // ══ Notifications ═══════════════════════════════════════════════════
 // Frigate's /ws socket is watched from the Rust side (one connection, no
 // MQTT broker needed); new alerts become native notifications.
-prefs.notify = Object.assign({ enabled: false, detections: false, cameras: [], cooldown: 60 }, prefs.notify);
+prefs.notify = Object.assign({ enabled: false, detections: false, cameras: [], cooldown: 60, images: "person" }, prefs.notify);
 
 function applyNotify() {
   savePrefs();
@@ -1488,6 +1762,7 @@ function setupNotifications() {
   $("#n-enabled").checked = n.enabled;
   $("#n-detections").checked = n.detections;
   $("#n-cooldown").value = String(n.cooldown);
+  $("#n-images").value = n.images;
   if ($("#n-cooldown").value !== String(n.cooldown)) { n.cooldown = 60; $("#n-cooldown").value = "60"; }
   const box = $("#n-cams");
   box.replaceChildren(...state.info.cameras.map((c) => {
@@ -1504,6 +1779,7 @@ function setupNotifications() {
 }
 $("#n-enabled").addEventListener("change", (e) => { prefs.notify.enabled = e.target.checked; applyNotify(); });
 $("#n-detections").addEventListener("change", (e) => { prefs.notify.detections = e.target.checked; applyNotify(); });
+$("#n-images").addEventListener("change", (e) => { prefs.notify.images = e.target.value; applyNotify(); });
 $("#n-cooldown").addEventListener("change", (e) => { prefs.notify.cooldown = +e.target.value; applyNotify(); });
 $("#n-all").addEventListener("click", () => { $$("#n-cams .chip").forEach((c) => c.classList.add("on")); prefs.notify.cameras = state.info.cameras.map((c) => c.name); applyNotify(); });
 $("#n-none").addEventListener("click", () => { $$("#n-cams .chip").forEach((c) => c.classList.remove("on")); prefs.notify.cameras = []; applyNotify(); });
@@ -1541,3 +1817,4 @@ $("#about-copy").addEventListener("click", async () => {
   try { await navigator.clipboard.writeText(`${appInfo.name}\n${text}`); toast("Copied."); }
   catch (_) { toast("Couldn't reach the clipboard; select the text instead.", true); }
 });
+window.addEventListener("beforeunload", () => closeMinute());

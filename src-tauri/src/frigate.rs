@@ -270,6 +270,15 @@ impl Frigate {
         Ok(resp)
     }
 
+    /// A small GET with its own short timeout (notification images and the
+    /// like must not hold anything up).
+    pub fn get_quick(&self, path: &str, secs: u64) -> Result<Response> {
+        let resp = self.req(Method::GET, path).timeout(Duration::from_secs(secs)).send().map_err(friendly_net_error)?;
+        self.refresh_token(&resp);
+        metrics::api(resp.content_length().unwrap_or(0));
+        if resp.status().is_success() { Ok(resp) } else { Err(api_error(resp)) }
+    }
+
     /// Alerts and detections for some cameras in a time range.
     pub fn review_items(&self, cameras: &[String], after: f64, before: f64) -> Result<Vec<ReviewItem>> {
         let list = cameras.iter().map(|c| enc(c)).collect::<Vec<_>>().join(",");

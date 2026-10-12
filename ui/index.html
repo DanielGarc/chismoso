@@ -17,7 +17,8 @@
   <nav class="tabs" id="tabs" role="tablist" hidden>
     <button class="tab active" data-view="live" role="tab" title="Live (Ctrl+1)"><svg viewBox="0 0 24 24"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4h9A2.5 2.5 0 0 1 17 6.5v1.6l3.4-2.1A1 1 0 0 1 22 6.9v10.2a1 1 0 0 1-1.6.9L17 15.9v1.6a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 3 17.5z"/></svg><span>Live</span></button>
     <button class="tab" data-view="exports" role="tab" title="Timelapse (Ctrl+2)"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-7-7zm1 2v6.6l4.2 2.5-1 1.7L11 12.7V5z"/></svg><span>Timelapse</span></button>
-    <button class="tab" data-view="settings" role="tab" title="Settings (Ctrl+3)"><svg viewBox="0 0 24 24"><path d="M10.3 2h3.4l.5 2.6 1.6.7 2.2-1.5 2.4 2.4-1.5 2.2.7 1.6 2.6.5v3.4l-2.6.5-.7 1.6 1.5 2.2-2.4 2.4-2.2-1.5-1.6.7-.5 2.6h-3.4l-.5-2.6-1.6-.7-2.2 1.5-2.4-2.4 1.5-2.2-.7-1.6L2 13.7v-3.4l2.6-.5.7-1.6-1.5-2.2 2.4-2.4 2.2 1.5 1.6-.7zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"/></svg><span>Settings</span></button>
+    <button class="tab" data-view="load" role="tab" title="Load on your Frigate server (Ctrl+3)"><svg viewBox="0 0 24 24"><path d="M3 13h4l2.5-6 4 11 2.5-5H21v2h-3.7l-3.8 7.5-4-11L8.3 15H3z"/></svg><span>Load</span></button>
+    <button class="tab" data-view="settings" role="tab" title="Settings (Ctrl+4)"><svg viewBox="0 0 24 24"><path d="M10.3 2h3.4l.5 2.6 1.6.7 2.2-1.5 2.4 2.4-1.5 2.2.7 1.6 2.6.5v3.4l-2.6.5-.7 1.6 1.5 2.2-2.4 2.4-2.2-1.5-1.6.7-.5 2.6h-3.4l-.5-2.6-1.6-.7-2.2 1.5-2.4-2.4 1.5-2.2-.7-1.6L2 13.7v-3.4l2.6-.5.7-1.6-1.5-2.2 2.4-2.4 2.2 1.5 1.6-.7zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"/></svg><span>Settings</span></button>
   </nav>
   <div class="appbar-tools" id="live-tools" hidden>
     <div class="layout-pick">
@@ -240,20 +241,39 @@
     </section>
 
     <!-- Settings -->
+    <section class="view" id="view-load" hidden>
+      <div class="card">
+        <div class="card-head"><h3>Right now</h3><span class="muted small">last minute · updates every 5 s</span></div>
+        <div id="load"><p class="muted">Measuring…</p></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>Trend</h3>
+          <span class="muted small" id="trend-note">Kept on this computer, per server, for 24 hours</span>
+          <span class="grow"></span>
+          <div class="seg mini" id="trend-range"><button data-h="1" class="on">1 h</button><button data-h="6">6 h</button><button data-h="24">24 h</button></div>
+        </div>
+        <div class="trends" id="trends"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>This computer</h3></div>
+        <div id="decode"><p class="muted">Checking…</p></div>
+      </div>
+    </section>
+
     <section class="view" id="view-settings" hidden>
       <div class="card">
         <div class="card-head"><h3>System</h3><button class="link" id="stats-refresh">Refresh</button></div>
         <div id="system"><p class="muted">Loading…</p></div>
-      </div>
-      <div class="card">
-        <div class="card-head"><h3>Load from this app</h3><span class="muted small">last minute · updates every 5 s</span></div>
-        <div id="load"><p class="muted">Measuring…</p></div>
       </div>
       <div class="card" id="notify-card">
         <div class="card-head"><h3>Notifications</h3><span class="muted small">Native desktop notifications while the app is running</span></div>
         <div class="notify">
           <label class="check"><input type="checkbox" id="n-enabled"> <span>Notify me about new alerts</span></label>
           <label class="check"><input type="checkbox" id="n-detections"> <span>Also detections <span class="muted">(can be a lot)</span></span></label>
+          <label class="inline">Snapshot in the notification
+            <select id="n-images"><option value="person">When a person is detected</option><option value="all">For every notification</option><option value="off">Never</option></select>
+          </label>
           <label class="inline">At most one per camera every
             <select id="n-cooldown"><option value="10">10 s</option><option value="30">30 s</option><option value="60">1 min</option><option value="300">5 min</option><option value="900">15 min</option></select>
           </label>

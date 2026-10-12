@@ -26,8 +26,9 @@ const WebRTC = (() => {
     });
   }
 
-  async function play(video, stream, { signal, timeoutMs = 12000 } = {}) {
+  async function play(el, stream, { signal, timeoutMs = 12000 } = {}) {
     if (!supported()) throw new Error("This system's web view has no WebRTC support.");
+    let video = el; // can change: moveTo() hands the connection to another element
     checkAbort(signal);
     const pc = new RTCPeerConnection({ bundlePolicy: "max-bundle" });
     active.add(pc);
@@ -67,7 +68,17 @@ const WebRTC = (() => {
         });
         video.play().catch(() => {});
       });
-      return { pc, close };
+      // Show this connection in another <video> (grid tile <-> camera view)
+      // instead of opening a second one to go2rtc.
+      const moveTo = (next) => {
+        if (closed || next === video) return;
+        const old = video;
+        video = next;
+        next.srcObject = media;
+        next.play().catch(() => {});
+        if (old.srcObject === media) old.srcObject = null;
+      };
+      return { pc, close, moveTo };
     } catch (e) {
       close();
       throw e;
@@ -199,7 +210,7 @@ const Live = {
     if (WebRTC.supported()) {
       try {
         const h = await WebRTC.play(video, stream, { signal });
-        const handle = { kind: "webrtc", close: h.close, onDrop: null };
+        const handle = { kind: "webrtc", stream, close: h.close, moveTo: h.moveTo, onDrop: null };
         h.pc.addEventListener("connectionstatechange", () => {
           if (["failed", "disconnected"].includes(h.pc.connectionState)) handle.onDrop?.(new Error("WebRTC connection dropped."));
         });

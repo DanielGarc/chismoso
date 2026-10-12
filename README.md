@@ -5,7 +5,8 @@ A lightweight desktop client for [Frigate NVR](https://frigate.video) on Windows
 - **Live view.** A grid of cameras (snapshots, or live video) using Frigate's camera groups or your own layouts, and a full live view per camera with detect/record/snapshot switches. Live video tries WebRTC first, then MSE, then 1 fps snapshots, so something always shows.
 - **Recordings timeline.** Under the grid and under each camera is a bar you can zoom from weeks down to seconds, with alerts and detections marked on it. Click anywhere to play from that moment: one camera, or every camera in the layout in sync. A speed slider goes from −16× (reverse) to 16×.
 - **Clips.** Select a stretch of the bar to save it as a clip (one per camera) or start a timelapse from it.
-- **Notifications.** Native desktop notifications for new Frigate alerts (and optionally detections), per camera, with a cooldown.
+- **Notifications.** Native desktop notifications for new Frigate alerts (and optionally detections), per camera, with a cooldown, and a snapshot of the person when one is detected.
+- **Load.** What the app asks of your Frigate server right now, and a 24-hour trend kept on this computer.
 - **Timelapses and exports.** Pick cameras and a time range, then make a timelapse at any speed (2×–3600×) or a real-time clip. Frigate renders it, and the app downloads it, can delete the server copy, and plays exports in-app.
 - **Settings.** System stats (detector speed, camera fps, disk, GPU) and Frigate's `config.yml` editor, with validation, save, save & restart, and restart.
 - **Command line.** The same export engine without the window, for scripts and scheduled jobs.
@@ -62,7 +63,7 @@ Under the hood it's light: the bar asks Frigate for one day of recordings at a t
 
 ### Notifications
 
-**Settings → Notifications** turns on native desktop notifications for new alerts, optionally detections too, for all cameras or the ones you pick, at most one per camera per cooldown. They come from one WebSocket to Frigate's `/ws` while the app is running (no MQTT broker needed); the same connection keeps open timelines current. Use **Send a test notification** to check your system allows them (on macOS, allow the app under System Settings → Notifications). On Windows the app registers its own name and icon for notifications at startup (per user, under `HKCU\Software\Classes\AppUserModelId\io.github.frigate-desktop`), so they don't show up as "Windows PowerShell" even when you run the `.exe` without installing it.
+**Settings → Notifications** turns on native desktop notifications for new alerts (with a snapshot of the person when one is detected; or for every alert, or never), optionally detections too, for all cameras or the ones you pick, at most one per camera per cooldown. They come from one WebSocket to Frigate's `/ws` while the app is running (no MQTT broker needed); the same connection keeps open timelines current. Use **Send a test notification** to check your system allows them (on macOS, allow the app under System Settings → Notifications). On Windows the app registers its own name and icon for notifications at startup (per user, under `HKCU\Software\Classes\AppUserModelId\io.github.frigate-desktop`), so they don't show up as "Windows PowerShell" even when you run the `.exe` without installing it.
 
 ### Timelapses
 
@@ -72,6 +73,18 @@ Under the hood it's light: the bar asks Frigate for one day of recordings at a t
 - Progress shows elapsed time and an estimate of the time left for each camera.
 
 Frigate 0.17+ supports any speed. Older versions only offer 25×, and the app tells you if that's the case.
+
+### Load on your Frigate server
+
+The **Load** tab shows, for the last minute: requests and data this app pulls from Frigate, live streams open, Frigate's server CPU, and go2rtc viewers from every client. Below are 24-hour trends of the same numbers (1 h / 6 h / 24 h), recorded once a minute while the app is open and kept in local storage per server; gaps are times the app was closed. It also says whether this computer decodes video in hardware, and on Linux what to install if it doesn't.
+
+What the app does to stay light:
+
+- Live streams close after the window has been minimised or hidden for 30 s, and reopen when it's back. Tiles scrolled out of view don't stream or fetch snapshots.
+- Snapshot tiles ask Frigate for the size they're shown at, not a fixed size.
+- Grid playback plays at most 4 cameras at once (each pulls a full-resolution recording); the rest show a still from the recordings every few seconds and start playing when clicked.
+- Opening a camera from a live tile reuses the tile's WebRTC connection when it's the same stream, and hands it back when you return.
+- The timeline only repaints when something on it moved.
 
 ## Command line
 

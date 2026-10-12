@@ -21,11 +21,10 @@ tiny_http = "0.12.0"
 getrandom = "0.4.3"
 rustls-platform-verifier = "0.7"
 sha2 = "0.11.0"
-tauri-plugin-notification = "2"
+notify-rust = "4.18"
 
 [target.'cfg(windows)'.dependencies]
-# Windows toasts: sent with the app's own identity (name + icon), not PowerShell's.
-notify-rust = { version = "4.18", default-features = false }
+# Windows toasts: registered with the app's own identity (name + icon), not PowerShell's.
 winreg = "0.56"
 windows-sys = { version = "0.61", features = ["Win32_UI_Shell", "Win32_Foundation"] }
 

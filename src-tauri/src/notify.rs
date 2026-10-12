@@ -15,8 +15,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
-#[cfg(not(windows))]
-use tauri_plugin_notification::NotificationExt;
 use tungstenite::Message;
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -29,6 +27,8 @@ pub struct Settings {
     pub cameras: Vec<String>,
     /// Minimum seconds between notifications for the same camera.
     pub cooldown: u64,
+    /// Attach a snapshot: "person" (when a person is in it), "all" or "off".
+    pub images: String,
 }
 
 /// A review change, forwarded to the page.
@@ -69,7 +69,7 @@ pub fn start(app: AppHandle, client: Frigate, settings: Arc<Mutex<Settings>>) ->
                             return;
                         }
                         match ws.read() {
-                            Ok(Message::Text(t)) => handle(&app, &t, &settings, &mut last_sent, &mut notified),
+                            Ok(Message::Text(t)) => handle(&app, &client, &t, &settings, &mut last_sent, &mut notified),
                             Ok(Message::Close(_)) => break,
                             Ok(_) => {}
                             Err(tungstenite::Error::Io(e)) if matches!(e.kind(), std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut) => {}
@@ -93,7 +93,7 @@ pub fn start(app: AppHandle, client: Frigate, settings: Arc<Mutex<Settings>>) ->
     Watcher { stop }
 }
 
-fn handle(app: &AppHandle, text: &str, settings: &Mutex<Settings>, last_sent: &mut HashMap<String, Instant>, notified: &mut Vec<String>) {
+fn handle(app: &AppHandle, client: &Frigate, text: &str, settings: &Mutex<Settings>, last_sent: &mut HashMap<String, Instant>, notified: &mut Vec<String>) {
     let Ok(msg) = serde_json::from_str::<Value>(text) else { return };
     if msg["topic"] != "reviews" {
         return;
@@ -139,34 +139,102 @@ fn handle(app: &AppHandle, text: &str, settings: &Mutex<Settings>, last_sent: &m
     let what = if labels.is_empty() { "Activity".to_string() } else { capitalize(&labels.join(", ")) };
     let cam = capitalize(&camera.replace('_', " "));
     let title = if severity == "alert" { format!("{what} at {cam}") } else { format!("Detection: {what}") };
-    let body = if severity == "alert" { "New alert. Open Frigate Desktop to watch.".to_string() } else { format!("{cam} saw {}", what.to_lowercase()) };
-    let _ = show(app, &title, &body);
+    let body = if severity == "alert" { "New alert. Open the app to watch.".to_string() } else { format!("{cam} saw {}", what.to_lowercase()) };
+
+    let objects: Vec<String> = after["data"]["objects"].as_array().into_iter().flatten().filter_map(|x| x.as_str().map(str::to_string)).collect();
+    let person = objects.iter().any(|o| o.starts_with("person"));
+    let want_image = match s.images.as_str() {
+        "off" => false,
+        "all" => true,
+        _ => person, // default: only when a person is in it
+    };
+    if !want_image {
+        let _ = show(&title, &body, None);
+        return;
+    }
+    // Fetching the picture takes a moment; don't hold up the socket.
+    let detections: Vec<String> = after["data"]["detections"].as_array().into_iter().flatten().filter_map(|x| x.as_str().map(str::to_string)).collect();
+    let (client, camera, id) = (client.clone(), camera.to_string(), id.to_string());
+    std::thread::spawn(move || {
+        let image = snapshot(&client, &camera, &id, &detections, person);
+        let _ = show(&title, &body, image.as_deref());
+    });
 }
 
-pub fn test(app: &AppHandle) -> Result<(), String> {
-    show(app, "Notifications are on", "You'll get a notification like this when Frigate raises an alert.")
+/// A picture for the notification, saved to a temp file (the OS wants a
+/// path): the tracked person's snapshot if there is one, otherwise the
+/// first object's, otherwise the camera's current frame.
+fn snapshot(client: &Frigate, camera: &str, review_id: &str, detections: &[String], person: bool) -> Option<String> {
+    use crate::frigate::enc;
+    let mut ids: Vec<&String> = detections.iter().take(4).collect();
+    if person && ids.len() > 1 {
+        // Put the person first: ask Frigate what each tracked object is.
+        let is_person = |id: &str| {
+            client.get_quick(&format!("/api/events/{}", enc(id)), 3).ok().and_then(|r| r.json::<Value>().ok()).is_some_and(|v| v["label"].as_str().is_some_and(|l| l.starts_with("person")))
+        };
+        if let Some(i) = ids.iter().position(|id| is_person(id)) {
+            let p = ids.remove(i);
+            ids.insert(0, p);
+        }
+    }
+    let mut paths: Vec<String> = ids.iter().map(|id| format!("/api/events/{}/snapshot.jpg?bbox=1&h=480&quality=80", enc(id))).collect();
+    paths.push(format!("/api/{}/latest.jpg?h=480&quality=80", enc(camera)));
+    let bytes = paths.iter().find_map(|p| {
+        let r = client.get_quick(p, 4).ok()?;
+        let b = r.bytes().ok()?;
+        (b.len() > 100).then_some(b)
+    })?;
+    let dir = std::env::temp_dir().join("frigate-desktop-notifications");
+    std::fs::create_dir_all(&dir).ok()?;
+    prune(&dir, 20);
+    let safe: String = review_id.chars().map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '.' { c } else { '_' }).collect();
+    let path = dir.join(format!("{safe}.jpg"));
+    std::fs::write(&path, &bytes).ok()?;
+    Some(path.to_string_lossy().into_owned())
 }
 
-/// One native notification. On Windows we send it ourselves: the plugin falls
-/// back to PowerShell's identity (name and icon) unless the app was installed
-/// with a Start-menu shortcut, so a portable or self-built .exe would show
-/// "Windows PowerShell". See `windows::register`.
-fn show(app: &AppHandle, title: &str, body: &str) -> Result<(), String> {
+/// Keep only the newest `keep` images (the OS may still be showing recent ones).
+fn prune(dir: &std::path::Path, keep: usize) {
+    let Ok(rd) = std::fs::read_dir(dir) else { return };
+    let mut files: Vec<_> = rd.flatten().filter_map(|e| Some((e.metadata().ok()?.modified().ok()?, e.path()))).collect();
+    if files.len() <= keep {
+        return;
+    }
+    files.sort();
+    for (_, p) in &files[..files.len() - keep] {
+        let _ = std::fs::remove_file(p);
+    }
+}
+
+pub fn test(_app: &AppHandle) -> Result<(), String> {
+    show("Notifications are on", "You'll get a notification like this when Frigate raises an alert.", None)
+}
+
+/// One native notification, with an optional picture. Sent with notify-rust
+/// directly on every desktop OS (it's what Tauri's notification plugin uses
+/// underneath), because the plugin can't attach images and on Windows falls
+/// back to PowerShell's identity unless the app was installed.
+fn show(title: &str, body: &str, image: Option<&str>) -> Result<(), String> {
+    let mut n = notify_rust::Notification::new();
+    n.summary(title).body(body).appname(crate::about::NAME);
+    if let Some(path) = image {
+        n.image_path(path);
+    }
     #[cfg(windows)]
+    n.app_id(crate::about::IDENTIFIER);
+    #[cfg(target_os = "macos")]
     {
-        let _ = app;
-        notify_rust::Notification::new()
-            .summary(title)
-            .body(body)
-            .app_id(windows::APP_ID.get().map(String::as_str).unwrap_or_default())
-            .show()
-            .map(|_| ())
-            .map_err(|e| e.to_string())
+        // Notifications belong to the app bundle; a bare binary (cargo run)
+        // borrows Terminal's, as the plugin did.
+        static APP: std::sync::Once = std::sync::Once::new();
+        APP.call_once(|| {
+            let bundled = std::env::current_exe().is_ok_and(|p| p.to_string_lossy().contains(".app/Contents/MacOS"));
+            let _ = notify_rust::set_application(if bundled { crate::about::IDENTIFIER } else { "com.apple.Terminal" });
+        });
     }
-    #[cfg(not(windows))]
-    {
-        app.notification().builder().title(title).body(body).show().map_err(|e| e.to_string())
-    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    n.auto_icon(); // the binary's name, which is the icon name the .deb/.rpm installs
+    n.show().map(|_| ()).map_err(|e| e.to_string())
 }
 
 /// Gives the app its own identity for Windows notifications, however it was
@@ -175,15 +243,12 @@ fn show(app: &AppHandle, title: &str, body: &str) -> Result<(), String> {
 /// the taskbar agree. The installers' Start-menu shortcut uses the same ID.
 #[cfg(windows)]
 pub mod windows {
-    use std::sync::OnceLock;
     use winreg::RegKey;
     use winreg::enums::HKEY_CURRENT_USER;
 
-    pub static APP_ID: OnceLock<String> = OnceLock::new();
     const ICON: &[u8] = include_bytes!("../icons/128x128@2x.png");
 
     pub fn register(app_id: &str, name: &str) {
-        let _ = APP_ID.set(app_id.to_string());
         let wide: Vec<u16> = app_id.encode_utf16().chain(Some(0)).collect();
         // Must happen before the first window opens.
         unsafe { windows_sys::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID(wide.as_ptr()) };

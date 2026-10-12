@@ -28,9 +28,17 @@ pub fn allowed(path: &str) -> bool {
     if p.starts_with("/exports/") || p.starts_with("/clips/") || p.starts_with("/vod/") {
         return true;
     }
-    // /api/<camera>/latest.jpg (or .webp)
     let parts: Vec<&str> = p.split('/').collect();
-    parts.len() == 4 && parts[1] == "api" && !parts[2].is_empty() && (parts[3] == "latest.jpg" || parts[3] == "latest.webp")
+    if parts.len() < 4 || parts[1] != "api" || parts[2].is_empty() {
+        return false;
+    }
+    match parts.len() {
+        // /api/<camera>/latest.jpg (or .webp)
+        4 => parts[3] == "latest.jpg" || parts[3] == "latest.webp",
+        // /api/<camera>/recordings/<time>/snapshot.jpg: a still from the recordings
+        6 => parts[3] == "recordings" && parts[4].parse::<f64>().is_ok() && parts[5] == "snapshot.jpg",
+        _ => false,
+    }
 }
 
 pub fn start(client: Arc<Mutex<Option<Frigate>>>) -> anyhow::Result<MediaServer> {
@@ -131,6 +139,8 @@ mod tests {
         assert!(allowed("/clips/review/thumb-pool-1.webp"));
         assert!(!allowed("/api/config/raw"));
         assert!(!allowed("/api/pool/recordings"));
+        assert!(allowed("/api/pool/recordings/1791750000.5/snapshot.jpg?height=360"));
+        assert!(!allowed("/api/pool/recordings/summary/snapshot.jpg"));
         assert!(!allowed("/api/login"));
         assert!(!allowed("/exports/../api/config/raw"));
     }

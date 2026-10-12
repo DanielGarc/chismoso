@@ -79,6 +79,10 @@ class Timeline {
     } else if (!live && ts && this.follow && (ts < this.start || ts > this.end)) {
       this.centerOn(ts);
     }
+    // Called 4×/s; only repaint when the playhead or "now" moved a pixel.
+    const key = `${live}|${Math.round(this.x(ts ?? Date.now() / 1000) * 2)}|${this.start}|${this.end}|${this.w}`;
+    if (key === this.lastKey) return;
+    this.lastKey = key;
     this.draw();
   }
 
