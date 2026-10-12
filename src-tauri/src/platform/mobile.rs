@@ -46,6 +46,12 @@ pub fn notify(app: &AppHandle, title: &str, body: &str, image: Option<&str>) -> 
     b.show().map_err(|e| e.to_string())
 }
 
+/// Scratch space (notification pictures). The system temp folder isn't
+/// writable by apps on Android.
+pub fn cache_dir(app: &AppHandle) -> std::path::PathBuf {
+    app.path().app_cache_dir().unwrap_or_else(|_| std::env::temp_dir())
+}
+
 pub fn default_output_dir(app: &AppHandle) -> String {
     app.path()
         .document_dir()

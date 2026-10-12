@@ -77,6 +77,11 @@ pub fn notify(_app: &AppHandle, title: &str, body: &str, image: Option<&str>) ->
     n.show().map(|_| ()).map_err(|e| e.to_string())
 }
 
+/// Scratch space (notification pictures).
+pub fn cache_dir(_app: &AppHandle) -> PathBuf {
+    std::env::temp_dir()
+}
+
 pub fn default_output_dir(_app: &AppHandle) -> String {
     dirs::video_dir()
         .or_else(dirs::download_dir)

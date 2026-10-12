@@ -680,6 +680,8 @@ async function openFocus(name, streamIdx = 0, at = null) {
   if (at == null) tl.setSpan(3600);
   $("#pb-date").value = "";
   startTicker();
+  // The phone's back button (and a mouse's back button) returns to the grid.
+  if (!history.state?.focus) history.pushState({ focus: name }, "");
   if (at != null) return playAt(at);
   await startLive(handoff);
 }
@@ -1087,7 +1089,11 @@ function closeFocus(silent) {
   if (resume) playAt(resume); else startGrid();
 }
 
-$("#focus-back").addEventListener("click", () => closeFocus(false));
+$("#focus-back").addEventListener("click", () => {
+  closeFocus(false);
+  if (history.state?.focus) history.back(); // drop the entry openFocus added
+});
+window.addEventListener("popstate", () => { if (state.focus) closeFocus(false); });
 $("#focus-mute").addEventListener("click", (e) => {
   focusVideo.muted = !focusVideo.muted;
   e.currentTarget.textContent = focusVideo.muted ? "🔇 Muted" : "🔊 Sound on";

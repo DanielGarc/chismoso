@@ -156,7 +156,7 @@ fn handle(app: &AppHandle, client: &Frigate, text: &str, settings: &Mutex<Settin
     let detections: Vec<String> = after["data"]["detections"].as_array().into_iter().flatten().filter_map(|x| x.as_str().map(str::to_string)).collect();
     let (app, client, camera, id) = (app.clone(), client.clone(), camera.to_string(), id.to_string());
     std::thread::spawn(move || {
-        let image = snapshot(&client, &camera, &id, &detections, person);
+        let image = snapshot(&client, &platform::cache_dir(&app), &camera, &id, &detections, person);
         let _ = platform::notify(&app, &title, &body, image.as_deref());
     });
 }
@@ -164,7 +164,7 @@ fn handle(app: &AppHandle, client: &Frigate, text: &str, settings: &Mutex<Settin
 /// A picture for the notification, saved to a temp file (the OS wants a
 /// path): the tracked person's snapshot if there is one, otherwise the
 /// first object's, otherwise the camera's current frame.
-fn snapshot(client: &Frigate, camera: &str, review_id: &str, detections: &[String], person: bool) -> Option<String> {
+fn snapshot(client: &Frigate, cache: &std::path::Path, camera: &str, review_id: &str, detections: &[String], person: bool) -> Option<String> {
     use crate::frigate::enc;
     let mut ids: Vec<&String> = detections.iter().take(4).collect();
     if person && ids.len() > 1 {
@@ -184,7 +184,7 @@ fn snapshot(client: &Frigate, camera: &str, review_id: &str, detections: &[Strin
         let b = r.bytes().ok()?;
         (b.len() > 100).then_some(b)
     })?;
-    let dir = std::env::temp_dir().join("frigate-desktop-notifications");
+    let dir = cache.join("frigate-desktop-notifications");
     std::fs::create_dir_all(&dir).ok()?;
     prune(&dir, 20);
     let safe: String = review_id.chars().map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '.' { c } else { '_' }).collect();
