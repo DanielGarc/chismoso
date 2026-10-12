@@ -59,6 +59,7 @@ jobs:
           export AR_aarch64_linux_android="$bin/llvm-ar"
           export WRY_ANDROID_PACKAGE=org.caprichosos.chismoso WRY_ANDROID_LIBRARY=chismoso_lib
           export WRY_ANDROID_KOTLIN_FILES_OUT_DIR="$RUNNER_TEMP/kotlin"
+          mkdir -p "$WRY_ANDROID_KOTLIN_FILES_OUT_DIR"
           cargo clippy --lib --target aarch64-linux-android -- -D warnings
 
   ios:
