@@ -1,6 +1,6 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
-    <style name="Theme.frigate_desktop" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="Theme.chismoso" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- The app is dark; no white flash at start or behind the system bars. -->
         <item name="android:windowBackground">#0B0F16</item>
         <!-- Customize your theme here. -->

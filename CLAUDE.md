@@ -39,8 +39,18 @@ with gaps, review items, /ws pushes, exports, config). Set it up with
 for HTTPS + login admin/password). `GET /debug/review?camera=doorbell` pushes
 a live alert; `GET /debug/requests` lists what the app asked for.
 
-## Naming and versions
+## Naming, versions, releases
 
-The product name is a working title: change `NAME` in `src-tauri/src/about.rs`
-and `productName` in `tauri.conf.json`. The version is only in
-`src-tauri/Cargo.toml`.
+- The app is **Chismoso**; identifier `org.caprichosos.chismoso` (don't change
+  it: it's the install identity, and on phones a new one is a new app).
+  Display name: `NAME` in `src-tauri/src/about.rs` and `productName` in
+  `tauri.conf.json`.
+- The version lives only in `src-tauri/Cargo.toml`. Release with Actions →
+  "Bump version and release" (`.github/workflows/bump.yml` →
+  `release.yml`): builds every desktop platform, signs updater artifacts,
+  publishes the release; installed copies offer the update.
+- The website and docs are in `site/` (Markdown in `site/docs/`, built by
+  `site/build.mjs`, deployed by `pages.yml`). When a feature changes, update
+  its docs page in the same commit.
+- The Android project in `src-tauri/gen/android` is generated; after
+  regenerating it, run `python3 dev/android-customize.py`.

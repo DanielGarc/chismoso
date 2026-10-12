@@ -184,7 +184,7 @@ fn snapshot(client: &Frigate, cache: &std::path::Path, camera: &str, review_id: 
         let b = r.bytes().ok()?;
         (b.len() > 100).then_some(b)
     })?;
-    let dir = cache.join("frigate-desktop-notifications");
+    let dir = cache.join("chismoso-notifications");
     std::fs::create_dir_all(&dir).ok()?;
     prune(&dir, 20);
     let safe: String = review_id.chars().map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '.' { c } else { '_' }).collect();

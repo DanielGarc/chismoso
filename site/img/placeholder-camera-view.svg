@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" role="img" aria-labelledby="t"><title id="t">Illustration: one camera in full view with stream picker and switches</title>
+<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#18202f"/><stop offset="1" stop-color="#222c40"/></linearGradient></defs>
+<rect x="1" y="1" width="1198" height="748" rx="18" fill="#0b0f16" stroke="#243045" stroke-width="2"/>
+<path d="M1 19a18 18 0 0 1 18-18h1162a18 18 0 0 1 18 18v33H1z" fill="#121823"/><line x1="1" y1="52" x2="1199" y2="52" stroke="#243045" stroke-width="2"/>
+<circle cx="32" cy="27" r="11" fill="none" stroke="#3b82f6" stroke-width="4"/><circle cx="32" cy="27" r="4" fill="#ef4444"/>
+<text x="52" y="33" font-size="17" font-weight="700" fill="#e6ebf3">Chismoso</text>
+<rect x="176" y="12" width="64" height="30" rx="8" fill="#182030"/><text x="208" y="32" font-size="14" fill="#e6ebf3" text-anchor="middle" font-weight="600">Live</text><text x="256" y="32" font-size="14" fill="#8b97ab">Timelapse</text><text x="352" y="32" font-size="14" fill="#8b97ab">Load</text><text x="406" y="32" font-size="14" fill="#8b97ab">Settings</text>
+<circle cx="1102" cy="27" r="4" fill="#22c55e"/><text x="1113" y="32" font-size="13" fill="#8b97ab">online</text>
+<rect x="16" y="64" width="1168" height="46" rx="10" fill="#121823" stroke="#243045"/>
+<text x="32" y="92" font-size="14" fill="#60a5fa">← All cameras</text><text x="150" y="92" font-size="15" fill="#e6ebf3" font-weight="700">Front door</text>
+<rect x="246" y="74" width="104" height="26" rx="6" fill="#0b0f16" stroke="#243045"/><text x="258" y="92" font-size="12.5" fill="#e6ebf3">main stream ▾</text>
+<rect x="360" y="75" width="120" height="24" rx="12" fill="#14301f"/><circle cx="374" cy="87" r="4" fill="#22c55e"/><text x="384" y="91.5" font-size="12" fill="#86efac">Live · WebRTC</text>
+<text x="700" y="92" font-size="13" fill="#c3cad6">Detect</text>
+<rect x="751.2" y="78" width="34" height="18" rx="9" fill="#3b82f6"/><circle cx="776.2" cy="87" r="7" fill="#e6ebf3"/>
+<text x="801.2" y="92" font-size="13" fill="#c3cad6">Record</text>
+<rect x="852.4000000000001" y="78" width="34" height="18" rx="9" fill="#3b82f6"/><circle cx="877.4000000000001" cy="87" r="7" fill="#e6ebf3"/>
+<text x="902.4000000000001" y="92" font-size="13" fill="#c3cad6">Snapshots</text>
+<rect x="975.2" y="78" width="34" height="18" rx="9" fill="#243045"/><circle cx="984.2" cy="87" r="7" fill="#e6ebf3"/>
+<text x="1050" y="92" font-size="13" fill="#c3cad6">Muted</text><text x="1104" y="92" font-size="13" fill="#c3cad6">⛶ Full</text>
+<rect x="16" y="122" width="1168" height="468" rx="10" fill="url(#sky)"/>
+<rect x="16" y="430" width="1168" height="160" fill="#1b2231"/>
+<rect x="470" y="170" width="250" height="300" rx="4" fill="#2b3954" stroke="#34425e" stroke-width="4"/><circle cx="690" cy="330" r="8" fill="#8b97ab"/>
+<rect x="150" y="200" width="200" height="150" fill="#25304a" stroke="#34425e" stroke-width="6"/><path d="M250 200v150M150 275h200" stroke="#34425e" stroke-width="5"/>
+<rect x="840" y="200" width="200" height="150" fill="#25304a" stroke="#34425e" stroke-width="6"/><path d="M940 200v150M840 275h200" stroke="#34425e" stroke-width="5"/>
+<path d="M420 470h350l40 40H380z" fill="#262f42"/>
+<rect x="780" y="440" width="70" height="46" rx="3" fill="#7c5a2e"/><path d="M780 460h70M815 440v46" stroke="#5b4220" stroke-width="3"/>
+<rect x="770" y="420" width="90" height="74" fill="none" stroke="#ef4444" stroke-width="3"/><rect x="770" y="400" width="74" height="20" fill="#ef4444"/><text x="778" y="415" font-size="12.5" fill="#fff" font-weight="700">package</text>
+<rect x="1060" y="134" width="112" height="26" rx="6" fill="#0b0f16" opacity=".8"/><text x="1116" y="152" font-size="13" fill="#e6ebf3" text-anchor="middle">14:32:08</text>
+<rect x="28" y="134" width="94" height="26" rx="13" fill="#0b0f16" opacity=".8"/><circle cx="44" cy="147" r="4" fill="#22c55e"/><text x="54" y="152" font-size="12.5" fill="#e6ebf3">25 fps</text>
+<rect x="16" y="602" width="1168" height="132" rx="10" fill="#121823" stroke="#243045"/>
+<rect x="32" y="614" width="60" height="28" rx="6" fill="#182030"/><text x="62" y="633" font-size="12.5" fill="#e6ebf3" text-anchor="middle">⟲ 10</text>
+<circle cx="116" cy="628" r="15" fill="#3b82f6"/><path d="M111 620l13 8-13 8z" fill="#fff"/>
+<rect x="140" y="614" width="60" height="28" rx="6" fill="#182030"/><text x="170" y="633" font-size="12.5" fill="#e6ebf3" text-anchor="middle">10 ⟳</text>
+<rect x="220" y="625" width="240" height="6" rx="3" fill="#243045"/><circle cx="340" cy="628" r="9" fill="#60a5fa" stroke="#0b0f16" stroke-width="3"/><text x="476" y="633" font-size="13" fill="#e6ebf3" font-weight="700">1×</text>
+<text x="560" y="633" font-size="12.5" fill="#c3cad6">⏮ Event   Event ⏭   ✂ Clip</text>
+<rect x="1100" y="614" width="70" height="28" rx="6" fill="#3a1717"/><text x="1135" y="633" font-size="12.5" fill="#fca5a5" text-anchor="middle">● Live</text>
+<rect x="32" y="664" width="1136" height="28" rx="5" fill="#182030"/>
+<rect x="32" y="664" width="268" height="28" fill="#1e3a66"/>
+<rect x="318" y="664" width="442" height="28" fill="#1e3a66"/>
+<rect x="790" y="664" width="378" height="28" fill="#1e3a66"/>
+<rect x="120" y="664" width="8" height="28" rx="2" fill="#f59e0b"/>
+<rect x="260" y="664" width="8" height="28" rx="2" fill="#ef4444"/>
+<rect x="420" y="664" width="8" height="28" rx="2" fill="#f59e0b"/>
+<rect x="470" y="664" width="8" height="28" rx="2" fill="#f59e0b"/>
+<rect x="640" y="664" width="8" height="28" rx="2" fill="#ef4444"/>
+<rect x="900" y="664" width="8" height="28" rx="2" fill="#f59e0b"/>
+<rect x="1010" y="664" width="8" height="28" rx="2" fill="#ef4444"/>
+<line x1="1120" y1="656" x2="1120" y2="700" stroke="#ef4444" stroke-width="2.5"/>
+<text x="40" y="716" font-size="12" fill="#8b97ab">09:00</text>
+<text x="255" y="716" font-size="12" fill="#8b97ab">10:00</text>
+<text x="470" y="716" font-size="12" fill="#8b97ab">11:00</text>
+<text x="685" y="716" font-size="12" fill="#8b97ab">12:00</text>
+<text x="900" y="716" font-size="12" fill="#8b97ab">13:00</text>
+<text x="1115" y="716" font-size="12" fill="#8b97ab">14:00</text>
+</svg>

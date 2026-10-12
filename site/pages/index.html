@@ -1,0 +1,179 @@
+---
+title: Chismoso
+description: Chismoso is a small, fast, open-source app for your Frigate NVR cameras: a live grid, a recordings timeline you can zoom from weeks to seconds, clips, timelapses and alerts. No Electron.
+active: home
+---
+<main id="main">
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="wrap">
+    <p class="eyebrow">Free and open source · for Frigate NVR</p>
+    <h1 id="hero-title">Everything your cameras saw, <em>in one small app</em></h1>
+    <p class="pitch">Chismoso is a lightweight desktop client for Frigate. Watch every camera live, scrub back through weeks of footage in seconds, save clips and timelapses, and get a notification when someone's at the door.</p>
+    <p class="aside"><dfn lang="es">chismoso</dfn> (Spanish, informal): the neighbor who always knows what's going on. For your cameras, that's a compliment.</p>
+    <div class="dl-primary" data-dl-primary="download.html">
+      <a class="btn btn-primary" href="download.html">Download</a>
+    </div>
+    <p class="dl-meta" data-dl-meta></p>
+    <p class="hero-links"><a href="download.html#all-platforms">All platforms</a> · <a href="docs/index.html">Read the docs</a> · <a href="{{gh}}">Source on GitHub</a></p>
+    <figure class="hero-shot">
+      <!-- Placeholder illustration: replace with a real screenshot (keep 1200×750 or update width/height). -->
+      <img src="img/placeholder-live-grid.svg" width="1200" height="750" alt="Illustration of Chismoso's live view: four cameras in a grid, a car and a cat outlined as detections, an alert on the front door camera, and the recordings timeline underneath.">
+    </figure>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="f-live">
+  <div class="wrap">
+    <div class="row">
+      <div class="row-text">
+        <h2 id="f-live">Watch live, without the wait</h2>
+        <p>Every camera in a grid, or one camera full size. Chismoso picks the best way to stream on its own: WebRTC through Frigate's go2rtc when it can, MSE when it can't, and snapshots as a last resort, so there's always a picture.</p>
+        <ul>
+          <li>Use Frigate's camera groups, or build your own layouts.</li>
+          <li>Substreams keep the grid light; the full view lets you pick the stream.</li>
+          <li>Each tile shows the frame rate you're actually getting.</li>
+        </ul>
+        <a class="more" href="docs/live-view.html">More about live view</a>
+      </div>
+      <figure class="shot">
+        <img src="img/placeholder-camera-view.svg" width="1200" height="750" loading="lazy" alt="Illustration of a single camera in full view: a stream picker, a Live · WebRTC badge, detect and record switches, and the timeline below.">
+      </figure>
+    </div>
+
+    <div class="row flip">
+      <div class="row-text">
+        <h2 id="f-timeline">Scroll back through time</h2>
+        <p>Under the grid sits a timeline you can zoom from weeks down to seconds, with alerts in red and detections in amber. Click anywhere and every camera in the layout plays from that moment, in step.</p>
+        <ul>
+          <li>Hover an event to see its thumbnail; jump to the previous or next one.</li>
+          <li>Play from −16× (backwards) to 16×, with <kbd class="kbd">J</kbd> <kbd class="kbd">K</kbd> <kbd class="kbd">L</kbd> like a video editor.</li>
+          <li>Select a stretch to play it, save it, or turn it into a timelapse.</li>
+        </ul>
+        <a class="more" href="docs/timeline.html">More about the timeline</a>
+      </div>
+      <figure class="shot">
+        <img src="img/placeholder-timeline.svg" width="1200" height="750" loading="lazy" alt="Illustration of recordings playback: two cameras playing in sync at 4×, with a selected range on the timeline ready to save as a clip or timelapse.">
+      </figure>
+    </div>
+
+    <div class="row">
+      <div class="row-text">
+        <h2 id="f-clips">Keep the parts that matter</h2>
+        <p>Save a clip from any camera, or squeeze a whole day into a one-minute timelapse. Pick a target length and Chismoso works out the speed. Frigate does the rendering, several cameras at a time, and the app downloads the results to a folder you choose.</p>
+        <ul>
+          <li><strong>Fast</strong> mode decodes keyframes only, many times quicker for long ranges.</li>
+          <li>Optionally delete the server copy once it's downloaded.</li>
+          <li>The same engine runs from the command line for scheduled jobs.</li>
+        </ul>
+        <a class="more" href="docs/clips-and-timelapses.html">More about clips and timelapses</a>
+      </div>
+      <figure class="shot">
+        <img src="img/placeholder-timelapse.svg" width="1200" height="750" loading="lazy" alt="Illustration of the Timelapse tab: three cameras selected, yesterday's range, a one-minute target length at 1440×, and progress bars for exports rendering in parallel.">
+      </figure>
+    </div>
+
+    <div class="row flip">
+      <div class="row-text">
+        <h2 id="f-alerts">Know when something happens</h2>
+        <p>New Frigate alerts arrive as native notifications, with a snapshot when a person is detected. Choose the cameras, add detections if you like, and set a cooldown so a busy driveway doesn't bury you.</p>
+        <p>No MQTT broker or cloud service involved: the app listens to Frigate directly while it's running.</p>
+        <a class="more" href="docs/notifications.html">More about notifications</a>
+      </div>
+      <figure class="shot">
+        <img src="img/placeholder-notification.svg" width="1200" height="750" loading="lazy" alt="Illustration of a desktop notification reading “Front door · Alert, person detected” with a snapshot.">
+      </figure>
+    </div>
+
+    <div class="row">
+      <div class="row-text">
+        <h2 id="f-light">Light by design</h2>
+        <p>A camera app shouldn't need a gigabyte of memory, or keep your server busy for nobody.</p>
+        <dl class="stats">
+          <div><dt>~10&nbsp;MB</dt><dd>download, built with Rust and Tauri&nbsp;2</dd></div>
+          <div><dt>No Electron</dt><dd>uses your system's own web view</dd></div>
+          <div><dt>Idle when hidden</dt><dd>streams close 30&nbsp;s after you minimize</dd></div>
+          <div><dt>Load screen</dt><dd>see what the app asks of Frigate</dd></div>
+        </dl>
+        <p><a class="more" href="docs/load.html">More about the Load screen</a></p>
+      </div>
+      <figure class="shot">
+        <img src="img/placeholder-load.svg" width="1200" height="750" loading="lazy" alt="Illustration of the Load screen: open streams, bandwidth, requests per minute and 24-hour trend lines.">
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="more-title">
+  <div class="wrap">
+    <div class="center">
+      <h2 id="more-title">And a few more things</h2>
+      <p class="lead">The details that make it pleasant to use every day.</p>
+    </div>
+    <ul class="cards">
+      <li>
+        <svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8"/><circle cx="12" cy="11" r="2.5" class="ic-red"/></svg>
+        <h3>Camera view</h3>
+        <p>One camera, full size. Pick a stream, flip detect, record and snapshots on or off, go full screen.</p>
+        <a class="more" href="docs/camera-view.html">Camera view</a>
+      </li>
+      <li>
+        <svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5z"/><path d="M9 12h6M9 16h4"/></svg>
+        <h3>Config editor</h3>
+        <p>Edit Frigate's <code>config.yml</code> with validation, then save or save &amp; restart. Admins only.</p>
+        <a class="more" href="docs/settings.html">Settings</a>
+      </li>
+      <li>
+        <svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <h3>Your certificate, pinned</h3>
+        <p>Works with Frigate's self-signed certificate: trust it once and you're warned if it ever changes. Your password is never stored.</p>
+        <a class="more" href="docs/privacy-and-security.html">Privacy &amp; security</a>
+      </li>
+      <li>
+        <svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 6l5 6-5 6"/><path d="M12 18h8"/></svg>
+        <h3>Command line</h3>
+        <p>Make timelapses and exports from scripts and scheduled jobs, no window needed.</p>
+        <a class="more" href="docs/command-line.html">Command line</a>
+      </li>
+      <li>
+        <svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="11" rx="2"/><path d="M6 11h1M10 11h1M14 11h1M18 11h0M7 14h10"/></svg>
+        <h3>Keyboard friendly</h3>
+        <p>Jump, scrub, change speed and hop between events without reaching for the mouse.</p>
+        <a class="more" href="docs/keyboard-shortcuts.html">Shortcuts</a>
+      </li>
+      <li>
+        <svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/></svg>
+        <h3>Updates from GitHub</h3>
+        <p>The app checks GitHub releases and offers to update when a new version is out.</p>
+        <a class="more" href="docs/updates.html">Updates</a>
+      </li>
+      <li>
+        <svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></svg>
+        <h3>Phones, soon</h3>
+        <p>Android and iOS are built from the same code. The first phone release comes later.</p>
+        <a class="more" href="docs/phones.html">Phone apps</a>
+      </li>
+      <li>
+        <svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+        <h3>No account, no cloud</h3>
+        <p>The app talks straight to your Frigate server. Your footage stays between the two of them.</p>
+        <a class="more" href="docs/faq.html">FAQ</a>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<section class="section cta" aria-labelledby="cta-title">
+  <div class="wrap">
+    <h2 id="cta-title">Give your cameras a nosy neighbor</h2>
+    <p class="lead">Windows, macOS and Linux today. Android and iOS are on the way.</p>
+    <div class="dl-primary" data-dl-primary="download.html">
+      <a class="btn btn-primary" href="download.html">Download</a>
+    </div>
+    <p class="dl-meta" data-dl-meta></p>
+    <p class="dl-status" data-dl-status role="status" aria-live="polite"></p>
+    <p class="hero-links"><a href="docs/install.html">Installation guide</a> · <a href="docs/sign-in.html">Connecting to Frigate</a></p>
+  </div>
+</section>
+
+</main>

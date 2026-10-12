@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" role="img" aria-labelledby="t"><title id="t">Illustration: the Load screen with server usage and 24-hour trends</title>
+<rect x="1" y="1" width="1198" height="748" rx="18" fill="#0b0f16" stroke="#243045" stroke-width="2"/>
+<path d="M1 19a18 18 0 0 1 18-18h1162a18 18 0 0 1 18 18v33H1z" fill="#121823"/><line x1="1" y1="52" x2="1199" y2="52" stroke="#243045" stroke-width="2"/>
+<circle cx="32" cy="27" r="11" fill="none" stroke="#3b82f6" stroke-width="4"/><circle cx="32" cy="27" r="4" fill="#ef4444"/>
+<text x="52" y="33" font-size="17" font-weight="700" fill="#e6ebf3">Chismoso</text>
+<text x="190" y="32" font-size="14" fill="#8b97ab">Live</text><text x="236" y="32" font-size="14" fill="#8b97ab">Timelapse</text><rect x="332" y="12" width="62" height="30" rx="8" fill="#182030"/><text x="363" y="32" font-size="14" fill="#e6ebf3" text-anchor="middle" font-weight="600">Load</text><text x="408" y="32" font-size="14" fill="#8b97ab">Settings</text>
+<text x="32" y="102" font-size="26" font-weight="700" fill="#e6ebf3">What this app asks of your Frigate server</text>
+<g><rect x="32" y="128" width="268" height="124" rx="12" fill="#121823" stroke="#243045"/><text x="54" y="162" font-size="14" fill="#8b97ab">Streams open</text><text x="54" y="222" font-size="48" font-weight="700" fill="#e6ebf3">2</text><text x="96" y="222" font-size="16" fill="#8b97ab">of 4 cameras</text></g>
+<g><rect x="316" y="128" width="268" height="124" rx="12" fill="#121823" stroke="#243045"/><text x="338" y="162" font-size="14" fill="#8b97ab">Bandwidth</text><text x="338" y="222" font-size="48" font-weight="700" fill="#e6ebf3">3.1</text><text x="420" y="222" font-size="16" fill="#8b97ab">Mbit/s</text></g>
+<g><rect x="600" y="128" width="268" height="124" rx="12" fill="#121823" stroke="#243045"/><text x="622" y="162" font-size="14" fill="#8b97ab">Requests / min</text><text x="622" y="222" font-size="48" font-weight="700" fill="#e6ebf3">12</text></g>
+<g><rect x="884" y="128" width="284" height="124" rx="12" fill="#121823" stroke="#243045"/><text x="906" y="162" font-size="14" fill="#8b97ab">Overall</text><circle cx="918" cy="208" r="9" fill="#22c55e"/><text x="938" y="216" font-size="28" font-weight="700" fill="#22c55e">Light</text></g>
+<rect x="32" y="272" width="1136" height="300" rx="12" fill="#121823" stroke="#243045"/>
+<text x="56" y="306" font-size="16" font-weight="600" fill="#e6ebf3">Last 24 hours</text>
+<circle cx="900" cy="301" r="5" fill="#3b82f6"/><text x="912" y="306" font-size="13" fill="#8b97ab">bandwidth</text><circle cx="1010" cy="301" r="5" fill="#f59e0b"/><text x="1022" y="306" font-size="13" fill="#8b97ab">requests</text>
+<g stroke="#243045"><path d="M56 360h1088M56 420h1088M56 480h1088M56 540h1088"/></g>
+<path d="M56 520l60-6 60 4 60-30 60 8 60-50 60 20 60-4 60 30 60-70 60 16 60 34 60-6 60 2 60-40 60 30 60 10 60-8 60 14" fill="none" stroke="#3b82f6" stroke-width="3" stroke-linejoin="round"/>
+<path d="M56 536l60-2 60 2 60-12 60 4 60-18 60 8 60 0 60 10 60-22 60 6 60 12 60-2 60 0 60-14 60 10 60 4 60-2 60 6" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linejoin="round"/>
+<g font-size="12" fill="#8b97ab"><text x="56" y="562">−24 h</text><text x="600" y="562" text-anchor="middle">−12 h</text><text x="1144" y="562" text-anchor="end">now</text></g>
+<rect x="32" y="592" width="1136" height="138" rx="12" fill="#121823" stroke="#243045"/>
+<g font-size="15"><circle cx="58" cy="628" r="5" fill="#22c55e"/><text x="74" y="633" fill="#e6ebf3">Driveway</text><text x="300" y="633" fill="#8b97ab">WebRTC · visible</text>
+<circle cx="58" cy="662" r="5" fill="#22c55e"/><text x="74" y="667" fill="#e6ebf3">Front door</text><text x="300" y="667" fill="#8b97ab">WebRTC · visible</text>
+<circle cx="58" cy="696" r="5" fill="#8b97ab"/><text x="74" y="701" fill="#e6ebf3">Backyard</text><text x="300" y="701" fill="#8b97ab">closed · window hidden</text></g>
+</svg>

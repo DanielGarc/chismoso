@@ -60,6 +60,8 @@ pub fn run() {
             commands::recording_summary,
             commands::review_items,
             commands::app_info,
+            commands::check_update,
+            commands::install_update,
             commands::video_decoding,
             commands::debug_log,
             commands::camera_toggle,

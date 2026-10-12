@@ -2,9 +2,10 @@
 
 use serde::Serialize;
 
-/// Display name. The product name is still being decided; change it here
-/// and in tauri.conf.json (productName).
-pub const NAME: &str = "Frigate Desktop";
+/// Display name. To rename the app, change it here and `productName` in
+/// tauri.conf.json (the identifier there is the install identity: changing it
+/// makes a new app on phones and loses saved settings).
+pub const NAME: &str = "Chismoso";
 /// Bundle identifier from tauri.conf.json (also the Windows AppUserModelID).
 pub const IDENTIFIER: &str = env!("APP_IDENTIFIER");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -39,7 +40,7 @@ pub fn info() -> Info {
     }
 }
 
-/// e.g. "Frigate Desktop 0.1.0 (1a2b3c4d, built 2026-10-11, linux x86_64)"
+/// e.g. "Chismoso 0.1.0 (1a2b3c4d, built 2026-10-11, linux x86_64)"
 pub fn line() -> String {
     let i = info();
     let commit = if i.commit.is_empty() { String::new() } else { format!("{}, ", i.commit) };

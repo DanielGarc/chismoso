@@ -1,13 +1,13 @@
 [package]
-name = "frigate-desktop"
+name = "chismoso"
 version = "0.1.0"
-description = "Lightweight desktop client for Frigate NVR: live view, timelapses and exports, settings"
+description = "Lightweight client for Frigate NVR: live view, recordings, timelapses, alerts"
 edition = "2024"
 
-# Desktop builds the `frigate-desktop` binary (src/main.rs); Android and iOS
+# Desktop builds the `chismoso` binary (src/main.rs); Android and iOS
 # load the library (src/lib.rs, `run`) from their native shells.
 [lib]
-name = "frigate_desktop_lib"
+name = "chismoso_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -41,6 +41,8 @@ webpki-roots = "1"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 notify-rust = "4.18"
+# Self-update from signed GitHub releases (desktop; phones update through stores).
+tauri-plugin-updater = { version = "2", default-features = false, features = ["rustls-tls", "zip"] }
 
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
 tauri-plugin-notification = "2"

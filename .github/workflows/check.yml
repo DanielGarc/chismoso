@@ -57,7 +57,7 @@ jobs:
           bin="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
           export CC_aarch64_linux_android="$bin/aarch64-linux-android24-clang"
           export AR_aarch64_linux_android="$bin/llvm-ar"
-          export WRY_ANDROID_PACKAGE=io.github.frigate_desktop WRY_ANDROID_LIBRARY=frigate_desktop_lib
+          export WRY_ANDROID_PACKAGE=org.caprichosos.chismoso WRY_ANDROID_LIBRARY=chismoso_lib
           export WRY_ANDROID_KOTLIN_FILES_OUT_DIR="$RUNNER_TEMP/kotlin"
           cargo clippy --lib --target aarch64-linux-android -- -D warnings
 
@@ -76,3 +76,19 @@ jobs:
       - name: Clippy for iOS
         working-directory: src-tauri
         run: cargo clippy --lib --target aarch64-apple-ios -- -D warnings
+
+  site:
+    name: Website builds (links checked)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - run: npm ci
+      - run: npm run build

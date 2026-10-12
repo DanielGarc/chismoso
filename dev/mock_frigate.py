@@ -6,7 +6,7 @@ without real cameras.
     python3 dev/mock_frigate.py            # http://127.0.0.1:5055 (no login)
     python3 dev/mock_frigate.py --tls      # https://127.0.0.1:5443, self-signed, login admin / password
 
-It implements the endpoints Frigate Desktop uses: login, config, stats,
+It implements the endpoints Chismoso uses: login, config, stats,
 snapshots, WebRTC (a real peer streaming a test video), exports with job
 progress, config editing and restart.
 """

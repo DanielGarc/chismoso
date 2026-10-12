@@ -45,6 +45,8 @@ const Platform = (() => {
     get form() { return features.form; },
     get mobile() { return features.form === "mobile"; },
     get compact() { return compact(); },
+    // "tap" on touch screens, "click" with a mouse (for instructions in text).
+    get tap() { return matchMedia("(pointer: coarse)").matches ? "tap" : "click"; },
     info,        // Promise of the full app_info (name, version, features…)
     apply,       // re-run after adding gated markup dynamically
   };

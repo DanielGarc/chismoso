@@ -1,0 +1,16 @@
+{
+  "name": "chismoso-site",
+  "private": true,
+  "description": "Website and documentation for Chismoso",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "devDependencies": {
+    "marked": "^18.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

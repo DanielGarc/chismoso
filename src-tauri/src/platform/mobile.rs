@@ -18,6 +18,7 @@ pub const FEATURES: Features = Features {
     choose_folder: false,
     keyboard: false,
     background_alerts: false,
+    self_update: false,
 };
 
 pub fn init() {}
@@ -56,12 +57,21 @@ pub fn default_output_dir(app: &AppHandle) -> String {
     app.path()
         .document_dir()
         .or_else(|_| app.path().app_data_dir())
-        .map(|d| d.join("Frigate Exports").display().to_string())
+        .map(|d| d.join("Chismoso Exports").display().to_string())
         .unwrap_or_default()
 }
 
 pub fn open_path(_path: &str, _reveal: bool, _connected: Option<&str>) -> Result<(), String> {
     Err("Opening files isn't available on this device yet.".into())
+}
+
+/// Phones update through their app stores.
+pub async fn check_update(_app: &AppHandle) -> Result<Option<super::UpdateInfo>, String> {
+    Ok(None)
+}
+
+pub async fn install_update(_app: &AppHandle, _progress: impl Fn(f64) + Send + 'static) -> Result<(), String> {
+    Err("Updates come from the app store on this device.".into())
 }
 
 pub fn decoding() -> Decoding {

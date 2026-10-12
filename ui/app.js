@@ -87,21 +87,22 @@ async function call(cmd, args) {
 // ══ Login ═══════════════════════════════════════════════════════════
 $("#f-url").value = prefs.url;
 $("#f-user").value = prefs.user;
-$("#f-insecure").checked = prefs.selfSigned;
 ($("#f-url").value ? $("#f-pass") : $("#f-url")).focus();
 
 async function connect({ trustNew = false } = {}) {
   const btn = $("#login-btn"), err = $("#login-error");
-  btn.disabled = true; btn.textContent = "Connecting…"; err.hidden = true; $("#cert-box").hidden = true;
+  btn.disabled = true; btn.textContent = "Connecting…"; err.hidden = true; $("#cert-box").hidden = true; btn.hidden = false;
   prefs.url = $("#f-url").value.trim();
   prefs.user = $("#f-user").value.trim();
-  prefs.selfSigned = $("#f-insecure").checked;
-  if (trustNew) delete prefs.pins[prefs.url];
+  // A server's own (self-signed) certificate is trusted per address: once you
+  // accept it, its fingerprint is pinned and checked on every connection.
+  if (trustNew) { delete prefs.pins[prefs.url]; prefs.trusted = { ...prefs.trusted, [prefs.url]: true }; }
+  const selfSigned = !!(prefs.trusted?.[prefs.url] || prefs.pins[prefs.url] || (prefs.selfSigned && !prefs.trusted));
   savePrefs();
   try {
     state.info = await invoke("connect", {
       url: prefs.url, user: prefs.user, password: $("#f-pass").value,
-      selfSigned: prefs.selfSigned, pinned: prefs.selfSigned ? prefs.pins[prefs.url] ?? null : null,
+      selfSigned, pinned: selfSigned ? prefs.pins[prefs.url] ?? null : null,
     });
     if (state.info.cert_fingerprint) { prefs.pins[prefs.url] = state.info.cert_fingerprint; savePrefs(); }
     $("#f-pass").value = "";
@@ -112,10 +113,11 @@ async function connect({ trustNew = false } = {}) {
       // Offer to trust (or re-trust) the certificate, and say clearly what that means.
       $("#cert-msg").textContent = code === "certificate-changed"
         ? "Warning: this server's certificate changed since you last connected. If you reinstalled Frigate or renewed its certificate, that's expected. Otherwise, someone may be intercepting the connection."
-        : "This server uses its own certificate (normal for Frigate on port 8971). Trust it on this computer? It will be remembered, and you'll be warned if it ever changes.";
+        : "This server uses its own certificate (normal for Frigate on port 8971). Trust it on this device? It's remembered, and you'll be warned if it ever changes.";
       $("#cert-trust").textContent = code === "certificate-changed" ? "Trust the new certificate" : "Trust and connect";
       $("#cert-trust").className = "btn " + (code === "certificate-changed" ? "danger" : "primary");
       $("#cert-box").hidden = false;
+      $("#login-btn").hidden = true; // one clear choice: trust, or edit the address
     } else {
       err.textContent = errText(e); err.hidden = false;
     }
@@ -123,8 +125,9 @@ async function connect({ trustNew = false } = {}) {
     btn.disabled = false; btn.textContent = "Connect";
   }
 }
+$("#login-form").addEventListener("input", () => { $("#cert-box").hidden = true; $("#login-btn").hidden = false; });
 $("#login-form").addEventListener("submit", (ev) => { ev.preventDefault(); connect(); });
-$("#cert-trust").addEventListener("click", () => { $("#f-insecure").checked = true; connect({ trustNew: true }); });
+$("#cert-trust").addEventListener("click", () => connect({ trustNew: true }));
 
 async function enterApp() {
   MEDIA = await invoke("media_base");
@@ -611,7 +614,7 @@ function ensurePlayers() {
     const parked = state.parked.has(name);
     t.el.classList.toggle("parked", parked);
     t.video.hidden = parked; t.img.hidden = !parked;
-    if (parked) { t.recMsg.textContent = "Paused to save bandwidth · click to play"; t.stillAt = null; }
+    if (parked) { t.recMsg.textContent = `Paused to save bandwidth · ${Platform.tap} to play`; t.stillAt = null; }
   }
 }
 
@@ -856,7 +859,7 @@ function showEventCard(ev, x) {
   const what = ev.labels.length ? ev.labels.map(prettyName).join(", ") : "Activity";
   const where = !state.focus && ev.camera ? ` · ${camByName(ev.camera)?.friendly_name || prettyName(ev.camera)}` : "";
   $("#ev-title").textContent = `${ev.severity === "alert" ? "Alert" : "Detection"} · ${what}${where}`;
-  $("#ev-time").textContent = `${fmtClock(ev.start)}${ev.end ? " · " + human(ev.end - ev.start) : " · ongoing"} — click to play`;
+  $("#ev-time").textContent = `${fmtClock(ev.start)}${ev.end ? " · " + human(ev.end - ev.start) : " · ongoing"} — ${Platform.tap} to play`;
   card.className = "ev-card " + ev.severity;
   const img = $("#ev-img");
   img.hidden = !ev.thumb;
@@ -1825,3 +1828,49 @@ $("#about-copy").addEventListener("click", async () => {
   catch (_) { toast("Couldn't reach the clipboard; select the text instead.", true); }
 });
 window.addEventListener("beforeunload", () => closeMinute());
+
+// ══ Updates (desktop) ═══════════════════════════════════════════════
+// Releases on GitHub carry a signed latest.json; the backend checks it and
+// verifies the download's signature before installing. Checked at most once
+// a day on start, or on demand from About. Nothing installs without a click.
+const updateUi = { info: null, busy: false };
+async function checkForUpdate({ quiet = true } = {}) {
+  if (!Platform.has("self_update") || updateUi.busy) return null;
+  try {
+    const info = await invoke("check_update");
+    updateUi.info = info;
+    try { localStorage.setItem("updateCheckedAt", String(Date.now())); } catch (_) {}
+    if (info) showUpdateBar(info);
+    else if (!quiet) toast("You're on the latest version.");
+    $("#about-update").textContent = info ? `Version ${info.version} is available.` : "You're on the latest version.";
+    return info;
+  } catch (e) {
+    if (!quiet) toast(`Couldn't check for updates: ${errText(e)}`, true);
+    return null;
+  }
+}
+function showUpdateBar(info) {
+  $("#update-text").textContent = `${appInfo?.name || "Chismoso"} ${info.version} is available (you have ${info.current}).`;
+  $("#update-bar").hidden = false;
+}
+$("#update-later").addEventListener("click", () => { $("#update-bar").hidden = true; });
+$("#update-go").addEventListener("click", async () => {
+  if (updateUi.busy) return;
+  updateUi.busy = true;
+  $("#update-go").disabled = true;
+  $("#update-text").textContent = "Downloading the update…";
+  try { await invoke("install_update"); } // restarts the app when done
+  catch (e) {
+    $("#update-text").textContent = `The update didn't install: ${errText(e)}`;
+    $("#update-go").disabled = false;
+  } finally { updateUi.busy = false; }
+});
+listen("update-progress", ({ payload }) => {
+  $("#update-text").textContent = `Downloading the update… ${Math.round(payload * 100)}%`;
+});
+$("#about-check").addEventListener("click", () => checkForUpdate({ quiet: false }));
+Platform.info.then(() => {
+  let last = 0;
+  try { last = +localStorage.getItem("updateCheckedAt") || 0; } catch (_) {}
+  if (Date.now() - last > 20 * 3600e3) setTimeout(() => checkForUpdate(), 8000); // after start-up settles
+});

@@ -34,7 +34,7 @@ for t in $targets; do
       kt=$(mktemp -d)
       CC_aarch64_linux_android=clang AR_aarch64_linux_android=llvm-ar \
       CFLAGS_aarch64_linux_android="--target=aarch64-linux-android24 -ffreestanding -isystem $inc" \
-      WRY_ANDROID_PACKAGE=io.github.frigate_desktop WRY_ANDROID_LIBRARY=frigate_desktop_lib \
+      WRY_ANDROID_PACKAGE=org.caprichosos.chismoso WRY_ANDROID_LIBRARY=chismoso_lib \
       WRY_ANDROID_KOTLIN_FILES_OUT_DIR="$kt" \
         cargo clippy --lib --target aarch64-linux-android -- -D warnings
       rm -rf "$kt"

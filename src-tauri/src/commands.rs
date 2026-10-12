@@ -151,6 +151,23 @@ pub(crate) fn video_decoding() -> platform::Decoding {
     platform::decoding()
 }
 
+/// Is there a newer release? (desktop; always None on phones)
+#[tauri::command]
+pub(crate) async fn check_update(app: AppHandle) -> CmdResult<Option<platform::UpdateInfo>> {
+    platform::check_update(&app).await
+}
+
+/// Installs the update found by check_update, sending progress (0..1) as
+/// "update-progress" events, then restarts.
+#[tauri::command]
+pub(crate) async fn install_update(app: AppHandle) -> CmdResult<()> {
+    let events = app.clone();
+    platform::install_update(&app, move |p| {
+        let _ = events.emit("update-progress", p);
+    })
+    .await
+}
+
 /// Page-side diagnostics, printed only by debug builds.
 #[tauri::command]
 pub(crate) fn debug_log(msg: String) {

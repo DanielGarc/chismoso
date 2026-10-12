@@ -1,0 +1,46 @@
+# Actions → "Bump version and release" → Run workflow → enter 0.2.0.
+# Sets the version in src-tauri/Cargo.toml (the only place it lives), commits,
+# tags v0.2.0 and runs the release build. Installed copies then offer the
+# update; the website's download buttons point at it automatically.
+name: Bump version and release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: New version (e.g. 0.2.0)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: v${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set version, commit, tag
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' || { echo "::error::'$VERSION' isn't a version like 0.2.0"; exit 1; }
+          git rev-parse "v$VERSION" >/dev/null 2>&1 && { echo "::error::v$VERSION already exists"; exit 1; }
+          sed -i "0,/^version = \".*\"/s//version = \"$VERSION\"/" src-tauri/Cargo.toml
+          sed -i "/^name = \"chismoso\"$/{n;s/^version = \".*\"/version = \"$VERSION\"/}" src-tauri/Cargo.lock
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "release: v$VERSION"
+          git tag "v$VERSION"
+          git push origin HEAD "v$VERSION"
+
+  # Tags pushed by the workflow token don't start other workflows, so call
+  # the release build directly.
+  release:
+    needs: bump
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.bump.outputs.tag }}
+    secrets: inherit

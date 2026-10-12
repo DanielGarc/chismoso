@@ -1,18 +1,74 @@
-# Builds installers for Windows, macOS (Apple Silicon + Intel) and Linux.
-# Push a tag like v0.1.0 (or run it by hand) and download the results from the
-# draft release it creates.
-name: Build installers
+# Builds and publishes a release for Windows, macOS (Apple Silicon + Intel)
+# and Linux, with a signed latest.json that installed copies use to update
+# themselves.
+#
+# Ways to start it:
+#   - Actions → "Bump version and release" (recommended: sets the version,
+#     tags, then calls this workflow), or
+#   - push a tag like v0.2.0 whose version matches src-tauri/Cargo.toml.
+#
+# Secrets (Settings → Secrets and variables → Actions):
+#   TAURI_SIGNING_PRIVATE_KEY           updater signing key (required)
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  its password (empty if none)
+# Code signing (optional, later): Windows and Apple certificates.
+name: Release
 
 on:
   push:
     tags: ["v*"]
+  workflow_call:
+    inputs:
+      tag:
+        description: Tag to release, e.g. v0.2.0
+        required: true
+        type: string
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to (re)build, e.g. v0.2.0
+        required: true
+        type: string
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+
 jobs:
+  # One draft release that every build uploads into; it's published only
+  # after all of them succeed, so latest.json never points at missing files.
+  draft:
+    runs-on: ubuntu-latest
+    outputs:
+      id: ${{ steps.create.outputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - name: Check the tag matches Cargo.toml
+        run: |
+          v=$(grep -m1 '^version' src-tauri/Cargo.toml | cut -d'"' -f2)
+          [ "v$v" = "$TAG" ] || { echo "::error::Tag $TAG but Cargo.toml says $v"; exit 1; }
+      - id: create
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = process.env.TAG;
+            const { owner, repo } = context.repo;
+            const existing = (await github.rest.repos.listReleases({ owner, repo, per_page: 50 })).data.find(r => r.tag_name === tag);
+            const rel = existing ?? (await github.rest.repos.createRelease({
+              owner, repo, tag_name: tag, name: `Chismoso ${tag}`, draft: true,
+              generate_release_notes: true,
+            })).data;
+            core.setOutput('id', rel.id);
+
   build:
+    needs: draft
     strategy:
       fail-fast: false
       matrix:
@@ -28,6 +84,8 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
 
       - name: Linux build dependencies
         if: matrix.platform == 'ubuntu-22.04'
@@ -50,10 +108,21 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tauriScript: npx --yes @tauri-apps/cli@2
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'v__VERSION__' }}
-          releaseName: Frigate Desktop ${{ github.ref_type == 'tag' && github.ref_name || 'v__VERSION__' }}
-          releaseDraft: true
-          prerelease: false
+          releaseId: ${{ needs.draft.outputs.id }}
+          includeUpdaterJson: true
           args: ${{ matrix.args }}
+
+  publish:
+    needs: [draft, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.updateRelease({
+              ...context.repo, release_id: ${{ needs.draft.outputs.id }}, draft: false, make_latest: 'true',
+            });

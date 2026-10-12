@@ -8,9 +8,9 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if !args.is_empty() && !args[0].starts_with("-psn") {
         attach_console();
-        std::process::exit(frigate_desktop_lib::cli::run(args));
+        std::process::exit(chismoso_lib::cli::run(args));
     }
-    frigate_desktop_lib::run();
+    chismoso_lib::run();
 }
 
 /// Release builds on Windows have no console; reattach to the terminal that

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The page loads snapshots and recordings from the app's own media server on
+     127.0.0.1 (plain HTTP, never leaves the phone). Everything else stays
+     HTTPS-only for the web view; Frigate itself is reached from Rust, which
+     this file doesn't affect. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

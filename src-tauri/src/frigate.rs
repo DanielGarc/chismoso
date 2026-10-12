@@ -101,7 +101,7 @@ impl Frigate {
         let http = Client::builder()
             .tls_backend_preconfigured(tls::client_config(&trust).context("TLS setup failed")?)
             .connect_timeout(Duration::from_secs(10))
-            .user_agent(concat!("frigate-desktop/", env!("CARGO_PKG_VERSION")))
+            .user_agent(concat!("chismoso/", env!("CARGO_PKG_VERSION")))
             .build()
             .context("could not create HTTP client")?;
 
@@ -625,17 +625,35 @@ fn error_from(status: StatusCode, body: &str) -> anyhow::Error {
 }
 
 fn friendly_net_error(e: reqwest::Error) -> anyhow::Error {
-    let chain = format!("{e:?}").to_lowercase();
+    // The useful part is at the bottom of the chain (DNS, refused, TLS alert…).
+    let mut causes: Vec<String> = Vec::new();
+    let mut src: Option<&dyn std::error::Error> = std::error::Error::source(&e);
+    while let Some(s) = src {
+        let text = s.to_string();
+        if !causes.iter().any(|c| c.contains(&text)) {
+            causes.push(text);
+        }
+        src = s.source();
+    }
+    let root = causes.last().cloned().unwrap_or_else(|| e.to_string());
+    let chain = format!("{e:?} {}", causes.join(" ")).to_lowercase();
+    let host = e.url().and_then(|u| u.host_str()).unwrap_or("the server").to_string();
     if chain.contains(tls::CHANGED) {
         anyhow!("{}: this server's certificate is different from the one you trusted before. If you reinstalled Frigate or renewed its certificate, trust the new one; otherwise someone may be intercepting the connection.", tls::CHANGED)
     } else if chain.contains("certificate") || chain.contains("unknownissuer") {
         anyhow!("certificate-untrusted: Frigate's certificate isn't from a trusted authority (normal for Frigate's built-in certificate on port 8971).")
+    } else if chain.contains("dns error") || chain.contains("failed to lookup") || chain.contains("no address associated") || chain.contains("name or service not known") {
+        anyhow!("Couldn't find {host}: the name doesn't resolve on this network. If it only works at home, connect to your home Wi-Fi or VPN. ({root})")
+    } else if chain.contains("connection refused") {
+        anyhow!("{host} refused the connection. Check the port. ({root})")
+    } else if chain.contains("timed out") || e.is_timeout() {
+        anyhow!("{host} didn't answer in time. Check that it's reachable from this network. ({root})")
+    } else if chain.contains("alert") || chain.contains("handshake") || chain.contains("tls") {
+        anyhow!("Couldn't set up a secure connection with {host}. ({root})")
     } else if e.is_connect() {
-        anyhow!("Can't reach Frigate at that address. Check the URL and port. ({e})")
-    } else if e.is_timeout() {
-        anyhow!("Frigate took too long to respond. ({e})")
+        anyhow!("Can't reach {host}. Check the address and port. ({root})")
     } else {
-        anyhow!("Network error: {e}")
+        anyhow!("Network error: {root}")
     }
 }
 

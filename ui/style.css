@@ -447,3 +447,18 @@ html.touch canvas.timeline { height: 76px; }
 html.touch .rate input[type=range] { height: 32px; }
 html.touch .rate input[type=range]::-webkit-slider-thumb { width: 22px; height: 22px; margin-top: 5px; }
 html.no-keyboard kbd { display: none; }
+
+/* ── sign-in ── just the form: logo, name, three fields, one button */
+.login { align-content: center; gap: 14px; }
+.login-card { gap: 16px; }
+.login-brand { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 2px 0 6px; }
+.login-brand .brand-mark { width: 52px; height: 52px; border-radius: 14px; }
+.login-brand h1 { margin: 0; font-size: 22px; letter-spacing: -0.01em; }
+.login .app-ver { text-align: center; margin: 0; }
+html[data-compact] .login { padding: 16px; place-items: stretch; align-content: start; }
+html[data-compact] .login-card { background: none; border: 0; box-shadow: none; padding: 24px 4px 8px; width: 100%; }
+/* phones: no app bar until signed in (it only holds the logo then) */
+html[data-form="mobile"] body:has(#login:not([hidden])) .appbar { display: none; }
+/* update available */
+.update-bar { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: #0f1b33; border-bottom: 1px solid #1e3a6b; color: #dbeafe; font-size: 13px; flex-wrap: wrap; }
+.update-bar .btn.slim { padding: 4px 10px; }

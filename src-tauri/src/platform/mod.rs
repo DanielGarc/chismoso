@@ -39,6 +39,17 @@ pub struct Features {
     /// Alerts arrive while the app is in the background. Desktop: yes, the
     /// app keeps running. Mobile: no, the OS suspends it (needs push).
     pub background_alerts: bool,
+    /// The app can update itself from GitHub releases (phones use stores).
+    pub self_update: bool,
+}
+
+/// A newer release, as offered to the user.
+#[derive(Serialize, Clone, Debug)]
+pub struct UpdateInfo {
+    pub version: String,
+    pub current: String,
+    pub notes: Option<String>,
+    pub date: Option<String>,
 }
 
 /// How this device decodes video in the web view (Load screen).

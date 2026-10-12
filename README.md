@@ -1,6 +1,6 @@
-# Frigate Desktop
+# Chismoso
 
-A lightweight desktop client for [Frigate NVR](https://frigate.video) on Windows, macOS and Linux.
+A lightweight client for [Frigate NVR](https://frigate.video) on Windows, macOS and Linux, with Android and iOS builds from the same code. Not affiliated with the Frigate project.
 
 - **Live view.** A grid of cameras (snapshots, or live video) using Frigate's camera groups or your own layouts, and a full live view per camera with detect/record/snapshot switches. Live video tries WebRTC first, then MSE, then 1 fps snapshots, so something always shows.
 - **Recordings timeline.** Under the grid and under each camera is a bar you can zoom from weeks down to seconds, with alerts and detections marked on it. Click anywhere to play from that moment: one camera, or every camera in the layout in sync. A speed slider goes from −16× (reverse) to 16×.
@@ -11,7 +11,7 @@ A lightweight desktop client for [Frigate NVR](https://frigate.video) on Windows
 - **Settings.** System stats (detector speed, camera fps, disk, GPU) and Frigate's `config.yml` editor, with validation, save, save & restart, and restart.
 - **Command line.** The same export engine without the window, for scripts and scheduled jobs.
 
-It's built with [Tauri 2](https://tauri.app): a Rust backend plus the operating system's own web view. The installer is about 10 MB, and there's no Electron or bundled browser.
+It's built with [Tauri 2](https://tauri.app): a Rust backend plus the operating system's own web view. The installer is under 10 MB, and there's no Electron or bundled browser.
 
 ## Using it
 
@@ -19,7 +19,7 @@ Sign in with your Frigate address and account:
 
 | Address | Username | Notes |
 |---|---|---|
-| `https://your-frigate:8971` | your Frigate user | Tick **Trust this server's own certificate** if you use Frigate's default certificate. The certificate is pinned, and you're warned if it changes. |
+| `https://your-frigate:8971` | your Frigate user | With Frigate's default certificate, press **Trust and connect** when asked. The certificate is pinned, and you're warned if it changes. |
 | `http://your-frigate:5000` | leave empty | Internal port with no login. Only use it on a network you trust. |
 
 The address, username and options are remembered. **The password is never stored.**
@@ -63,7 +63,7 @@ Under the hood it's light: the bar asks Frigate for one day of recordings at a t
 
 ### Notifications
 
-**Settings → Notifications** turns on native desktop notifications for new alerts (with a snapshot of the person when one is detected; or for every alert, or never), optionally detections too, for all cameras or the ones you pick, at most one per camera per cooldown. They come from one WebSocket to Frigate's `/ws` while the app is running (no MQTT broker needed); the same connection keeps open timelines current. Use **Send a test notification** to check your system allows them (on macOS, allow the app under System Settings → Notifications). On Windows the app registers its own name and icon for notifications at startup (per user, under `HKCU\Software\Classes\AppUserModelId\io.github.frigate-desktop`), so they don't show up as "Windows PowerShell" even when you run the `.exe` without installing it.
+**Settings → Notifications** turns on native notifications for new alerts (with a snapshot of the person when one is detected; or for every alert, or never), optionally detections too, for all cameras or the ones you pick, at most one per camera per cooldown. They come from one WebSocket to Frigate's `/ws` while the app is running (no MQTT broker needed); the same connection keeps open timelines current. Use **Send a test notification** to check your system allows them (on macOS, allow the app under System Settings → Notifications). On Windows the app registers its own name and icon for notifications at startup (per user, under `HKCU\Software\Classes\AppUserModelId\org.caprichosos.chismoso`), so they don't show up as "Windows PowerShell" even when you run the `.exe` without installing it.
 
 ### Timelapses
 
@@ -92,16 +92,16 @@ Any argument switches to command-line mode (on Windows, run it from a terminal):
 
 ```sh
 # list cameras
-frigate-desktop --url https://frigate.local:8971 --user admin --insecure --list-cameras
+chismoso --url https://frigate.local:8971 --user admin --insecure --list-cameras
 
 # a 1440× timelapse of yesterday for two cameras, removing the server copies afterwards
-FRIGATE_PASSWORD=... frigate-desktop --url https://frigate.local:8971 --user admin --insecure \
+FRIGATE_PASSWORD=... chismoso --url https://frigate.local:8971 --user admin --insecure \
   --camera pool --camera north_outside \
   --start "2026-10-10 00:00" --end "2026-10-11 00:00" \
   --speed 1440 --out ~/Videos/Frigate --delete-after
 ```
 
-`frigate-desktop --version` prints the version, commit and build date. `frigate-desktop --help` lists every option (`--realtime`, `--smooth`, `--fps`, `--camera all`, `--list-exports` and more). Cameras render in parallel, and speeds of 60× and up use keyframe-only decoding unless you pass `--smooth`. The exit code is 0 on success, 1 if any export failed, and 2 for usage or connection errors.
+`chismoso --version` prints the version, commit and build date. `chismoso --help` lists every option (`--realtime`, `--smooth`, `--fps`, `--camera all`, `--list-exports` and more). Cameras render in parallel, and speeds of 60× and up use keyframe-only decoding unless you pass `--smooth`. The exit code is 0 on success, 1 if any export failed, and 2 for usage or connection errors.
 
 ## Building
 
@@ -123,9 +123,9 @@ For installers (`.msi`/`.exe`, `.dmg`/`.app`, `.deb`/`.rpm`/`.AppImage`), instal
 
 **Checks:** `.github/workflows/check.yml` lints and tests every platform (Linux, Windows, macOS, Android, iOS) on each push. Locally, `sh dev/cross-check.sh` covers Linux, Windows and Android from a Linux machine.
 
-**Automated builds:** `.github/workflows/release.yml` builds all platforms on GitHub. Push a tag such as `v0.1.0`, and the installers appear on a draft release.
+**Releases:** Actions → **Bump version and release** sets the version, tags it and builds Windows, macOS (Apple Silicon + Intel) and Linux installers into a GitHub release, with a signed `latest.json`. Installed copies check it once a day and offer **Update and restart**. The updater's signing key goes in the repo secrets `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`; its public half is in `tauri.conf.json`. The website (`site/`, deployed by `pages.yml`) reads download links from the latest release.
 
-macOS builds aren't code-signed. The first time, right-click the app and choose **Open**, or run `xattr -dr com.apple.quarantine "/Applications/Frigate Desktop.app"`.
+macOS builds aren't code-signed. The first time, right-click the app and choose **Open**, or run `xattr -dr com.apple.quarantine "/Applications/Chismoso.app"`.
 
 ## Developing without cameras
 

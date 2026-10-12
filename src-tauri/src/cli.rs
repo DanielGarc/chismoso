@@ -1,6 +1,6 @@
 //! Headless mode, for scripts and scheduled jobs:
 //!
-//!   frigate-timelapse --url https://frigate.local:8971 --user admin --insecure \
+//!   chismoso --url https://frigate.local:8971 --user admin --insecure \
 //!       --camera pool --start "2026-10-10 06:00" --end "2026-10-10 18:00" --speed 720
 //!
 //! The password is read from --password or the FRIGATE_PASSWORD environment variable.
@@ -11,11 +11,11 @@ use chrono::{Local, NaiveDateTime, TimeZone};
 use std::path::PathBuf;
 
 const HELP: &str = "\
-Frigate Timelapse
+Chismoso, a client for Frigate NVR
 
 Run with no arguments to open the app. Command-line mode:
 
-  frigate-timelapse --url URL [options] --camera NAME --start TIME --end TIME
+  chismoso --url URL [options] --camera NAME --start TIME --end TIME
 
 Connection:
   --url URL           Frigate address, e.g. https://frigate.local:8971 or http://host:5000

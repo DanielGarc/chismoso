@@ -7,9 +7,9 @@ plugins {
     id("rust")
 }
 
-// Version: Cargo.toml is the only place it's written (see README). Tauri
-// writes tauri.properties only when tauri.conf.json has a version, so fall
-// back to reading Cargo.toml. versionCode = major*10000 + minor*100 + patch.
+// Version: Cargo.toml is the only place it's written. Tauri writes
+// tauri.properties only when tauri.conf.json has a version, so fall back to
+// reading Cargo.toml. versionCode = major*10000 + minor*100 + patch.
 val cargoVersion: String = Regex("""(?m)^version\s*=\s*"([^"]+)"""")
     .find(rootProject.file("../../Cargo.toml").readText())?.groupValues?.get(1) ?: "0.0.0"
 val cargoVersionCode: Int = cargoVersion.split("-")[0].split(".").map { it.toIntOrNull() ?: 0 }
@@ -25,10 +25,10 @@ val tauriProperties = Properties().apply {
 
 android {
     compileSdk = 37
-    namespace = "io.github.frigate_desktop"
+    namespace = "org.caprichosos.chismoso"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
-        applicationId = "io.github.frigate_desktop"
+        applicationId = "org.caprichosos.chismoso"
         minSdk = 24
         targetSdk = 37
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", cargoVersionCode.toString()).toInt()

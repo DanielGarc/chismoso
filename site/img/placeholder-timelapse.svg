@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" role="img" aria-labelledby="t"><title id="t">Illustration: the Timelapse tab with three cameras rendering in parallel</title>
+<rect x="1" y="1" width="1198" height="748" rx="18" fill="#0b0f16" stroke="#243045" stroke-width="2"/>
+<path d="M1 19a18 18 0 0 1 18-18h1162a18 18 0 0 1 18 18v33H1z" fill="#121823"/><line x1="1" y1="52" x2="1199" y2="52" stroke="#243045" stroke-width="2"/>
+<circle cx="32" cy="27" r="11" fill="none" stroke="#3b82f6" stroke-width="4"/><circle cx="32" cy="27" r="4" fill="#ef4444"/>
+<text x="52" y="33" font-size="17" font-weight="700" fill="#e6ebf3">Chismoso</text>
+<text x="190" y="32" font-size="14" fill="#8b97ab">Live</text><rect x="228" y="12" width="96" height="30" rx="8" fill="#182030"/><text x="276" y="32" font-size="14" fill="#e6ebf3" text-anchor="middle" font-weight="600">Timelapse</text><text x="346" y="32" font-size="14" fill="#8b97ab">Load</text><text x="400" y="32" font-size="14" fill="#8b97ab">Settings</text>
+<circle cx="1102" cy="27" r="4" fill="#22c55e"/><text x="1113" y="32" font-size="13" fill="#8b97ab">online</text>
+<rect x="16" y="68" width="560" height="666" rx="12" fill="#121823" stroke="#243045"/>
+<text x="36" y="104" font-size="18" font-weight="700" fill="#e6ebf3">New export</text>
+<rect x="36" y="122" width="300" height="34" rx="8" fill="#0b0f16" stroke="#243045"/><rect x="38" y="124" width="148" height="30" rx="7" fill="#3b82f6"/><text x="112" y="144" font-size="13" fill="#fff" text-anchor="middle" font-weight="600">Timelapse</text><text x="261" y="144" font-size="13" fill="#8b97ab" text-anchor="middle">Real-time clip</text>
+<text x="36" y="190" font-size="13" fill="#8b97ab">Cameras</text>
+<rect x="36" y="202" width="94" height="30" rx="15" fill="#1e3a66" stroke="#3b82f6"/><text x="83.0" y="222" font-size="13" fill="#e6ebf3" text-anchor="middle">Driveway</text>
+<rect x="138" y="202" width="110" height="30" rx="15" fill="#1e3a66" stroke="#3b82f6"/><text x="193.0" y="222" font-size="13" fill="#e6ebf3" text-anchor="middle">Front door</text>
+<rect x="256" y="202" width="94" height="30" rx="15" fill="#1e3a66" stroke="#3b82f6"/><text x="303.0" y="222" font-size="13" fill="#e6ebf3" text-anchor="middle">Backyard</text>
+<rect x="358" y="202" width="78" height="30" rx="15" fill="#182030" stroke="#243045"/><text x="397.0" y="222" font-size="13" fill="#8b97ab" text-anchor="middle">Garage</text>
+<rect x="444" y="202" width="102" height="30" rx="15" fill="#182030" stroke="#243045"/><text x="495.0" y="222" font-size="13" fill="#8b97ab" text-anchor="middle">Side gate</text>
+<text x="36" y="300" font-size="13" fill="#8b97ab">Time range</text>
+<rect x="36" y="312" width="88.60000000000001" height="28" rx="7" fill="#182030" stroke="#243045"/><text x="80.30000000000001" y="331" font-size="12.5" fill="#8b97ab" text-anchor="middle">Last hour</text>
+<rect x="130.60000000000002" y="312" width="88.60000000000001" height="28" rx="7" fill="#182030" stroke="#243045"/><text x="174.90000000000003" y="331" font-size="12.5" fill="#8b97ab" text-anchor="middle">Last 24 h</text>
+<rect x="225.20000000000005" y="312" width="59.0" height="28" rx="7" fill="#182030" stroke="#243045"/><text x="254.70000000000005" y="331" font-size="12.5" fill="#8b97ab" text-anchor="middle">Today</text>
+<rect x="290.20000000000005" y="312" width="88.60000000000001" height="28" rx="7" fill="#1e3a66" stroke="#3b82f6"/><text x="334.50000000000006" y="331" font-size="12.5" fill="#e6ebf3" text-anchor="middle">Yesterday</text>
+<rect x="384.80000000000007" y="312" width="103.4" height="28" rx="7" fill="#182030" stroke="#243045"/><text x="436.50000000000006" y="331" font-size="12.5" fill="#8b97ab" text-anchor="middle">Last 7 days</text>
+<rect x="36" y="352" width="245" height="34" rx="8" fill="#0b0f16" stroke="#243045"/><text x="48" y="374" font-size="13" fill="#e6ebf3">From  Oct 10, 00:00</text>
+<rect x="291" y="352" width="245" height="34" rx="8" fill="#0b0f16" stroke="#243045"/><text x="303" y="374" font-size="13" fill="#e6ebf3">To  Oct 11, 00:00</text>
+<text x="36" y="420" font-size="13" fill="#8b97ab">Target length</text>
+<rect x="36" y="432" width="64" height="28" rx="7" fill="#182030" stroke="#243045"/><text x="68.0" y="451" font-size="12.5" fill="#8b97ab" text-anchor="middle">15 s</text>
+<rect x="106" y="432" width="64" height="28" rx="7" fill="#182030" stroke="#243045"/><text x="138.0" y="451" font-size="12.5" fill="#8b97ab" text-anchor="middle">30 s</text>
+<rect x="176" y="432" width="64" height="28" rx="7" fill="#1e3a66" stroke="#3b82f6"/><text x="208.0" y="451" font-size="12.5" fill="#e6ebf3" text-anchor="middle">1 min</text>
+<rect x="246" y="432" width="64" height="28" rx="7" fill="#182030" stroke="#243045"/><text x="278.0" y="451" font-size="12.5" fill="#8b97ab" text-anchor="middle">2 min</text>
+<rect x="316" y="432" width="64" height="28" rx="7" fill="#182030" stroke="#243045"/><text x="348.0" y="451" font-size="12.5" fill="#8b97ab" text-anchor="middle">5 min</text>
+<rect x="386" y="432" width="64" height="28" rx="7" fill="#182030" stroke="#243045"/><text x="418.0" y="451" font-size="12.5" fill="#8b97ab" text-anchor="middle">10 min</text>
+<text x="36" y="488" font-size="13" fill="#8b97ab">24 h of footage → 1 min at <tspan fill="#60a5fa" font-weight="700">1440×</tspan></text>
+<text x="36" y="524" font-size="13" fill="#8b97ab">Render</text>
+<rect x="36" y="536" width="250" height="52" rx="9" fill="#1e3a66" stroke="#3b82f6"/><text x="52" y="558" font-size="14" fill="#e6ebf3" font-weight="600">Fast</text><text x="52" y="577" font-size="12" fill="#8b97ab">keyframes only</text>
+<rect x="296" y="536" width="240" height="52" rx="9" fill="#182030" stroke="#243045"/><text x="312" y="558" font-size="14" fill="#e6ebf3" font-weight="600">Smooth</text><text x="312" y="577" font-size="12" fill="#8b97ab">every frame</text>
+<rect x="36" y="612" width="18" height="18" rx="4" fill="#182030" stroke="#3b82f6"/><path d="M40 621l4 4 7-8" stroke="#60a5fa" stroke-width="2.4" fill="none"/><text x="64" y="626" font-size="13" fill="#e6ebf3">Delete the server copy after downloading</text>
+<rect x="36" y="664" width="140" height="44" rx="10" fill="#3b82f6"/><text x="106" y="692" font-size="15" fill="#fff" text-anchor="middle" font-weight="700">Create</text>
+<rect x="592" y="68" width="592" height="346" rx="12" fill="#121823" stroke="#243045"/>
+<text x="612" y="104" font-size="18" font-weight="700" fill="#e6ebf3">Progress</text><text x="1164" y="104" font-size="13" fill="#60a5fa" text-anchor="end">Clear finished</text>
+<text x="612" y="146" font-size="14" fill="#e6ebf3" font-weight="600">Driveway · 1440×</text><text x="1164" y="146" font-size="12.5" fill="#8b97ab" text-anchor="end">Rendering 72% · about 40 s left</text>
+<rect x="612" y="158" width="552" height="8" rx="4" fill="#243045"/><rect x="612" y="158" width="397" height="8" rx="4" fill="#3b82f6"/>
+<text x="612" y="212" font-size="14" fill="#e6ebf3" font-weight="600">Front door · 1440×</text><text x="1164" y="212" font-size="12.5" fill="#8b97ab" text-anchor="end">Rendering 55% · about 1 min left</text>
+<rect x="612" y="224" width="552" height="8" rx="4" fill="#243045"/><rect x="612" y="224" width="304" height="8" rx="4" fill="#3b82f6"/>
+<text x="612" y="278" font-size="14" fill="#e6ebf3" font-weight="600">Backyard · 1440×</text><text x="1164" y="278" font-size="12.5" fill="#8b97ab" text-anchor="end">Downloading… 18.4 MB</text>
+<rect x="612" y="290" width="552" height="8" rx="4" fill="#243045"/><rect x="612" y="290" width="486" height="8" rx="4" fill="#60a5fa"/>
+<text x="612" y="344" font-size="14" fill="#e6ebf3" font-weight="600">Garage · 600×</text><text x="1164" y="344" font-size="12.5" fill="#8b97ab" text-anchor="end">Saved</text>
+<rect x="612" y="356" width="552" height="8" rx="4" fill="#243045"/><rect x="612" y="356" width="552" height="8" rx="4" fill="#22c55e"/>
+<rect x="592" y="430" width="592" height="304" rx="12" fill="#121823" stroke="#243045"/>
+<text x="612" y="466" font-size="18" font-weight="700" fill="#e6ebf3">On the server</text><text x="1164" y="466" font-size="13" fill="#60a5fa" text-anchor="end">Refresh</text>
+<rect x="612" y="486" width="176" height="110" rx="8" fill="#202a3d" stroke="#243045"/><path d="M612 566h176v22a8 8 0 0 1-8 8H620a8 8 0 0 1-8-8z" fill="#151c29"/><circle cx="700" cy="535" r="18" fill="#0b0f16" opacity=".7"/><path d="M694 525l16 10-16 10z" fill="#e6ebf3"/>
+<text x="612" y="620" font-size="13" fill="#e6ebf3">Driveway, Oct 9</text><text x="612" y="642" font-size="12.5" fill="#60a5fa">Download</text><text x="684" y="642" font-size="12.5" fill="#ef4444">Delete</text>
+<rect x="800" y="486" width="176" height="110" rx="8" fill="#1d2536" stroke="#243045"/><path d="M800 566h176v22a8 8 0 0 1-8 8H808a8 8 0 0 1-8-8z" fill="#151c29"/><circle cx="888" cy="535" r="18" fill="#0b0f16" opacity=".7"/><path d="M882 525l16 10-16 10z" fill="#e6ebf3"/>
+<text x="800" y="620" font-size="13" fill="#e6ebf3">Front door, Oct 9</text><text x="800" y="642" font-size="12.5" fill="#60a5fa">Download</text><text x="872" y="642" font-size="12.5" fill="#ef4444">Delete</text>
+<rect x="988" y="486" width="176" height="110" rx="8" fill="#1a2232" stroke="#243045"/><path d="M988 566h176v22a8 8 0 0 1-8 8H996a8 8 0 0 1-8-8z" fill="#151c29"/><circle cx="1076" cy="535" r="18" fill="#0b0f16" opacity=".7"/><path d="M1070 525l16 10-16 10z" fill="#e6ebf3"/>
+<text x="988" y="620" font-size="13" fill="#e6ebf3">Backyard, Oct 8</text><text x="988" y="642" font-size="12.5" fill="#60a5fa">Download</text><text x="1060" y="642" font-size="12.5" fill="#ef4444">Delete</text>
+<text x="612" y="700" font-size="12.5" fill="#8b97ab">Saved to Videos/Chismoso Exports</text>
+</svg>

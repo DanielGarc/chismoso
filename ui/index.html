@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Frigate Desktop</title>
+  <title>Chismoso</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,7 +12,7 @@
 <header class="appbar" data-tauri-drag-region>
   <div class="appbar-brand" data-tauri-drag-region>
     <span class="brand-mark tiny" aria-hidden="true"></span>
-    <span class="app-name" data-tauri-drag-region>Frigate Desktop</span>
+    <span class="app-name" data-tauri-drag-region>Chismoso</span>
   </div>
   <nav class="tabs" id="tabs" role="tablist" hidden>
     <button class="tab active" data-view="live" role="tab" title="Live (Ctrl+1)"><svg viewBox="0 0 24 24"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4h9A2.5 2.5 0 0 1 17 6.5v1.6l3.4-2.1A1 1 0 0 1 22 6.9v10.2a1 1 0 0 1-1.6.9L17 15.9v1.6a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 3 17.5z"/></svg><span>Live</span></button>
@@ -57,38 +57,36 @@
 <!-- ── Login ─────────────────────────────────────────────── -->
 <section id="login" class="login">
   <form class="login-card" id="login-form" autocomplete="off">
-    <div class="brand">
+    <div class="login-brand">
       <span class="brand-mark" aria-hidden="true"></span>
-      <div>
-        <h1 class="app-name">Frigate Desktop</h1>
-        <p class="muted">Live view, timelapses and settings for your NVR</p>
-      </div>
+      <h1 class="app-name">Chismoso</h1>
     </div>
-    <label>Address
-      <input id="f-url" placeholder="https://frigate.local:8971" required>
+    <label>Frigate address
+      <input id="f-url" placeholder="https://frigate.local:8971" required inputmode="url" autocapitalize="off" spellcheck="false">
     </label>
-    <div class="row2">
-      <label>Username
-        <input id="f-user" placeholder="empty for port 5000">
-      </label>
-      <label>Password
-        <input id="f-pass" type="password">
-      </label>
-    </div>
-    <label class="check"><input id="f-insecure" type="checkbox"> <span>Trust this server's own certificate <span class="muted">(Frigate's default on 8971)</span></span></label>
+    <label>Username
+      <input id="f-user" placeholder="Not needed on port 5000" autocapitalize="off" spellcheck="false">
+    </label>
+    <label>Password
+      <input id="f-pass" type="password">
+    </label>
     <div class="cert-box" id="cert-box" hidden>
       <p id="cert-msg"></p>
-      <code id="cert-fp" hidden></code>
       <button type="button" class="btn" id="cert-trust">Trust and connect</button>
     </div>
     <p id="login-error" class="error" hidden></p>
     <button class="btn primary big" id="login-btn" type="submit">Connect</button>
-    <p class="app-ver muted small" id="login-ver"></p>
-    <p class="hint">Use port 8971 with a Frigate user, or the internal port 5000 with no username. A trusted certificate is remembered; you'll be warned if it ever changes.</p>
   </form>
+  <p class="app-ver muted small" id="login-ver"></p>
 </section>
 
 <!-- ── App shell ─────────────────────────────────────────── -->
+<div class="update-bar" id="update-bar" role="status" hidden>
+  <span id="update-text"></span>
+  <span class="grow"></span>
+  <button class="btn primary slim" id="update-go">Update and restart</button>
+  <button class="btn ghost slim" id="update-later">Later</button>
+</div>
 <div id="shell" class="shell" hidden>
   <main>
     <!-- Live -->
@@ -250,14 +248,14 @@
       <div class="card">
         <div class="card-head">
           <h3>Trend</h3>
-          <span class="muted small" id="trend-note">Kept on this computer, per server, for 24 hours</span>
+          <span class="muted small" id="trend-note">Kept on this device, per server, for 24 hours</span>
           <span class="grow"></span>
           <div class="seg mini" id="trend-range"><button data-h="1" class="on">1 h</button><button data-h="6">6 h</button><button data-h="24">24 h</button></div>
         </div>
         <div class="trends" id="trends"></div>
       </div>
       <div class="card">
-        <div class="card-head"><h3>This computer</h3></div>
+        <div class="card-head"><h3>This device</h3></div>
         <div id="decode"><p class="muted">Checking…</p></div>
       </div>
     </section>
@@ -351,9 +349,10 @@
   <form method="dialog">
     <div class="dlg-head"><h3 id="about-name"></h3><button class="btn ghost slim" value="cancel">Close</button></div>
     <div class="dlg-body">
-      <p class="muted">A lightweight desktop client for Frigate NVR. Not affiliated with the Frigate project.</p>
+      <p class="muted">A lightweight client for Frigate NVR. Not affiliated with the Frigate project.</p>
       <dl class="kv" id="about-kv"></dl>
-      <div class="btns"><button type="button" class="btn" id="about-copy">Copy version info</button></div>
+      <p class="small muted" id="about-update" data-needs="self_update"></p>
+      <div class="btns"><button type="button" class="btn" id="about-check" data-needs="self_update">Check for updates</button><button type="button" class="btn" id="about-copy">Copy version info</button></div>
     </div>
   </form>
 </dialog>

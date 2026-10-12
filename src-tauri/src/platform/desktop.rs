@@ -12,6 +12,7 @@ pub const FEATURES: Features = Features {
     choose_folder: true,
     keyboard: true,
     background_alerts: true,
+    self_update: true,
 };
 
 /// Before the window exists.
@@ -22,7 +23,47 @@ pub fn init() {
 }
 
 pub fn plugins<R: Runtime>(builder: Builder<R>) -> Builder<R> {
-    builder
+    builder.plugin(tauri_plugin_updater::Builder::new().build())
+}
+
+// ── self-update ──
+// Releases are built by .github/workflows/release.yml, which also publishes a
+// signed `latest.json`; the endpoint and public key are in tauri.conf.json.
+// The update is checked here and only installed when the user says so.
+
+static PENDING: std::sync::Mutex<Option<tauri_plugin_updater::Update>> = std::sync::Mutex::new(None);
+
+pub async fn check_update(app: &AppHandle) -> Result<Option<super::UpdateInfo>, String> {
+    use tauri_plugin_updater::UpdaterExt;
+    let update = app.updater().map_err(|e| e.to_string())?.check().await.map_err(|e| e.to_string())?;
+    let info = update.as_ref().map(|u| super::UpdateInfo {
+        version: u.version.clone(),
+        current: u.current_version.clone(),
+        notes: u.body.clone(),
+        date: u.date.map(|d| d.to_string()),
+    });
+    *PENDING.lock().unwrap() = update;
+    Ok(info)
+}
+
+/// Downloads and installs the update found by `check_update`, reporting
+/// progress (0..=1) through `progress`, then restarts the app.
+pub async fn install_update(app: &AppHandle, progress: impl Fn(f64) + Send + 'static) -> Result<(), String> {
+    let update = PENDING.lock().unwrap().take().ok_or("Check for updates first.")?;
+    let mut done: u64 = 0;
+    update
+        .download_and_install(
+            move |chunk, total| {
+                done += chunk as u64;
+                if let Some(t) = total.filter(|t| *t > 0) {
+                    progress(done as f64 / t as f64);
+                }
+            },
+            || {},
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+    app.restart()
 }
 
 /// Once the window exists.
@@ -87,7 +128,7 @@ pub fn default_output_dir(_app: &AppHandle) -> String {
         .or_else(dirs::download_dir)
         .or_else(dirs::home_dir)
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("Frigate Exports")
+        .join("Chismoso Exports")
         .display()
         .to_string()
 }

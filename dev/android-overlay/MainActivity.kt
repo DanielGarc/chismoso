@@ -1,4 +1,4 @@
-package io.github.frigate_desktop
+package org.caprichosos.chismoso
 
 import android.graphics.Color
 import android.os.Bundle

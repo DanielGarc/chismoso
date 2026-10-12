@@ -1,0 +1,79 @@
+---
+title: Download
+description: Download Chismoso, the lightweight Frigate NVR client, for Windows, macOS (Apple Silicon and Intel) and Linux (.deb, .rpm, AppImage). Android and iOS are coming soon.
+active: download
+---
+<main id="main">
+
+<section class="dl-hero" aria-labelledby="dl-title">
+  <div class="wrap">
+    <h1 id="dl-title">Download Chismoso</h1>
+    <p class="lead">Free and open source. Installs in seconds, takes about 10&nbsp;MB, and connects to the Frigate server you already have.</p>
+    <div class="dl-primary" data-dl-primary>
+      <a class="btn btn-primary" href="{{latest}}">Download from GitHub</a>
+    </div>
+    <p class="dl-meta" data-dl-meta></p>
+    <p class="dl-status" data-dl-status role="status" aria-live="polite"></p>
+    <p class="dl-hint" data-mac-hint hidden>Not sure which Mac you have? Open the Apple menu → <strong>About This Mac</strong>. If it lists a <strong>Chip</strong> (M1, M2, …) it's Apple Silicon; a <strong>Processor</strong> (Intel Core …) means Intel.</p>
+  </div>
+</section>
+
+<section class="wrap" aria-labelledby="all-platforms">
+  <h2 class="sub" id="all-platforms">All platforms</h2>
+  <p class="sub-lead">Every build comes from the same source, built in the open by GitHub Actions.</p>
+  <div class="pf-grid" data-dl-groups>
+    <!-- Filled in by assets/download.js. Without JavaScript, these links still work. -->
+    <section class="pf-card" aria-labelledby="pf-windows-static">
+      <h3 id="pf-windows-static">Windows</h3>
+      <ul class="pf-list"><li><span class="pf-label"><span class="pf-name">Installer (.exe) or MSI</span><span class="pf-note">Windows 10 and 11, 64-bit</span></span><a class="btn btn-small btn-ghost" href="{{latest}}">Releases page</a></li></ul>
+    </section>
+    <section class="pf-card" aria-labelledby="pf-mac-static">
+      <h3 id="pf-mac-static">macOS</h3>
+      <ul class="pf-list"><li><span class="pf-label"><span class="pf-name">Apple Silicon or Intel (.dmg)</span><span class="pf-note">macOS 11 or newer</span></span><a class="btn btn-small btn-ghost" href="{{latest}}">Releases page</a></li></ul>
+    </section>
+    <section class="pf-card" aria-labelledby="pf-linux-static">
+      <h3 id="pf-linux-static">Linux</h3>
+      <ul class="pf-list"><li><span class="pf-label"><span class="pf-name">.deb, .rpm or AppImage</span><span class="pf-note">x86-64</span></span><a class="btn btn-small btn-ghost" href="{{latest}}">Releases page</a></li></ul>
+    </section>
+  </div>
+
+  <h2 class="sub" id="phones">Phones and tablets</h2>
+  <p class="sub-lead">The Android and iOS apps are built from the same code as the desktop app. The first phone release comes later; this page will offer it as soon as it exists.</p>
+  <div class="mobile-grid">
+    <div class="m-card is-soon" data-mobile="android">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10.5 18.5h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      <div><h3>Android</h3><p>Phones and tablets</p></div>
+      <span data-mobile-action><span class="pill pill-soon">Coming soon</span></span>
+    </div>
+    <div class="m-card is-soon" data-mobile="ios">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10 4.5h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      <div><h3>iOS</h3><p>iPhone and iPad</p></div>
+      <span data-mobile-action><span class="pill pill-soon">Coming soon</span></span>
+    </div>
+  </div>
+
+  <h2 class="sub" id="after">After you download</h2>
+  <div class="after">
+    <div>
+      <h3>macOS says it can't be opened</h3>
+      <p>The Mac builds aren't notarized yet. Right-click the app in Finder, choose <strong>Open</strong>, and confirm. You only do this once. <a href="docs/install.html#macos">Details</a></p>
+    </div>
+    <div>
+      <h3>Windows shows SmartScreen</h3>
+      <p>The installer isn't code-signed yet, so Windows doesn't recognize it. Choose <strong>More info</strong> → <strong>Run anyway</strong>. <a href="docs/install.html#windows">Details</a></p>
+    </div>
+    <div>
+      <h3>Linux video playback</h3>
+      <p>The .deb and .rpm pull in the GStreamer plugins video needs. For the AppImage, or for hardware decoding, see <a href="docs/install.html#linux">Linux notes</a>.</p>
+    </div>
+    <div>
+      <h3>Then sign in</h3>
+      <p>Enter your Frigate address and account. Recordings playback needs Frigate 0.17 or newer. <a href="docs/sign-in.html">Connecting to Frigate</a></p>
+    </div>
+  </div>
+
+  <h2 class="sub" id="source">Build it yourself</h2>
+  <p class="sub-lead page-end">Prefer to compile it? You need Rust and a few system libraries. See <a href="docs/building.html">Building from source</a>, or browse every past version on the <a href="{{releases}}">releases page</a>.</p>
+</section>
+
+</main>

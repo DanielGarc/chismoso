@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" role="img" aria-labelledby="t"><title id="t">Illustration: recordings timeline with synchronized playback and a selected range</title>
+<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2335"/><stop offset="1" stop-color="#202a3d"/></linearGradient></defs>
+<rect x="1" y="1" width="1198" height="748" rx="18" fill="#0b0f16" stroke="#243045" stroke-width="2"/>
+<path d="M1 19a18 18 0 0 1 18-18h1162a18 18 0 0 1 18 18v33H1z" fill="#121823"/><line x1="1" y1="52" x2="1199" y2="52" stroke="#243045" stroke-width="2"/>
+<circle cx="32" cy="27" r="11" fill="none" stroke="#3b82f6" stroke-width="4"/><circle cx="32" cy="27" r="4" fill="#ef4444"/>
+<text x="52" y="33" font-size="17" font-weight="700" fill="#e6ebf3">Chismoso</text>
+<rect x="176" y="12" width="64" height="30" rx="8" fill="#182030"/><text x="208" y="32" font-size="14" fill="#e6ebf3" text-anchor="middle" font-weight="600">Live</text><text x="256" y="32" font-size="14" fill="#8b97ab">Timelapse</text><text x="352" y="32" font-size="14" fill="#8b97ab">Load</text><text x="406" y="32" font-size="14" fill="#8b97ab">Settings</text>
+<!-- two synced players -->
+<svg x="16" y="68" width="578" height="300" viewBox="0 0 578 300"><rect width="578" height="300" rx="10" fill="url(#sky)"/><path d="M0 170h578v130H0z" fill="#1a2232"/><path d="M200 170h160l150 130H80z" fill="#252f43"/><path d="M392 108l70-42 70 42v62H392z" fill="#202a3d" stroke="#2c3850" stroke-width="2"/><circle cx="90" cy="110" r="40" fill="#1c2a2a"/><rect x="12" y="264" width="86" height="26" rx="6" fill="#0b0f16" opacity=".75"/><text x="22" y="282" font-size="14" fill="#e6ebf3">Driveway</text></svg>
+<svg x="606" y="68" width="578" height="300" viewBox="0 0 578 300"><rect width="578" height="300" rx="10" fill="#1d2536"/><rect width="578" height="210" fill="#212b3e"/><rect x="232" y="54" width="110" height="156" rx="4" fill="#2b3954"/><rect x="80" y="80" width="96" height="76" fill="#2a3650" stroke="#34425e" stroke-width="4"/><rect x="400" y="80" width="96" height="76" fill="#2a3650" stroke="#34425e" stroke-width="4"/><path d="M200 210h174v18H200z" fill="#262f42"/><rect x="12" y="264" width="100" height="26" rx="6" fill="#0b0f16" opacity=".75"/><text x="22" y="282" font-size="14" fill="#e6ebf3">Front door</text></svg>
+<rect x="500" y="80" width="200" height="30" rx="15" fill="#0b0f16" opacity=".85"/><text x="600" y="100" font-size="14" fill="#e6ebf3" text-anchor="middle" font-weight="600">Tue 14:32:08 · synced</text>
+<!-- controls -->
+<rect x="16" y="382" width="1168" height="58" rx="10" fill="#121823" stroke="#243045"/>
+<circle cx="50" cy="411" r="17" fill="#3b82f6"/><path d="M45 402v18l14-9z" fill="#fff"/>
+<text x="84" y="416" font-size="13" fill="#8b97ab">−16×</text>
+<rect x="124" y="408" width="300" height="6" rx="3" fill="#243045"/><rect x="274" y="408" width="92" height="6" rx="3" fill="#3b82f6"/><line x1="274" y1="400" x2="274" y2="422" stroke="#8b97ab" stroke-width="2"/><circle cx="366" cy="411" r="10" fill="#60a5fa" stroke="#0b0f16" stroke-width="3"/>
+<text x="436" y="416" font-size="13" fill="#8b97ab">16×</text><rect x="470" y="397" width="48" height="28" rx="6" fill="#182030"/><text x="494" y="416" font-size="14" fill="#e6ebf3" text-anchor="middle" font-weight="700">4×</text>
+<rect x="856" y="395" width="132" height="32" rx="8" fill="#182030" stroke="#243045"/><text x="922" y="416" font-size="14" fill="#e6ebf3" text-anchor="middle">Save clip</text>
+<rect x="1000" y="395" width="168" height="32" rx="8" fill="#3b82f6"/><text x="1084" y="416" font-size="14" fill="#fff" text-anchor="middle" font-weight="600">Timelapse…</text>
+<!-- timeline -->
+<rect x="16" y="454" width="1168" height="280" rx="10" fill="#121823" stroke="#243045"/>
+<g font-size="12" fill="#8b97ab"><text x="150" y="480">12:00</text><text x="320" y="480">13:00</text><text x="490" y="480">14:00</text><text x="660" y="480">15:00</text><text x="830" y="480">16:00</text><text x="1000" y="480">17:00</text></g>
+<text x="1168" y="480" font-size="12" fill="#60a5fa" text-anchor="end">zoom: hours</text>
+<g stroke="#243045"><path d="M150 490v228M320 490v228M490 490v228M660 490v228M830 490v228M1000 490v228"/></g>
+<g font-size="13" fill="#e6ebf3"><text x="32" y="520">Driveway</text><text x="32" y="574">Front door</text><text x="32" y="628">Backyard</text><text x="32" y="682">Garage</text></g>
+<g fill="#1f2a3d"><rect x="140" y="502" width="1030" height="28" rx="5"/><rect x="140" y="556" width="1030" height="28" rx="5"/><rect x="140" y="610" width="760" height="28" rx="5"/><rect x="930" y="610" width="240" height="28" rx="5"/><rect x="140" y="664" width="1030" height="28" rx="5"/></g>
+<g fill="#f59e0b"><rect x="210" y="506" width="22" height="20" rx="3"/><rect x="414" y="506" width="14" height="20" rx="3"/><rect x="590" y="506" width="40" height="20" rx="3"/><rect x="880" y="506" width="16" height="20" rx="3"/><rect x="260" y="614" width="18" height="20" rx="3"/><rect x="540" y="668" width="26" height="20" rx="3"/><rect x="1040" y="668" width="12" height="20" rx="3"/></g>
+<g fill="#ef4444"><rect x="560" y="560" width="18" height="20" rx="3"/><rect x="760" y="560" width="26" height="20" rx="3"/><rect x="330" y="560" width="12" height="20" rx="3"/></g>
+<rect x="520" y="494" width="160" height="206" fill="#3b82f6" opacity=".18"/><path d="M520 494v206M680 494v206" stroke="#60a5fa" stroke-width="2"/>
+<rect x="540" y="704" width="120" height="22" rx="11" fill="#182030" stroke="#3b82f6"/><text x="600" y="719" font-size="12" fill="#e6ebf3" text-anchor="middle">14:10 – 15:06</text>
+<rect x="580" y="490" width="3" height="214" fill="#e6ebf3"/>
+</svg>
