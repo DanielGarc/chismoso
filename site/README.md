@@ -138,7 +138,6 @@ attributes), and keep files small (WebP or optimized PNG).
 | `placeholder-camera-view.svg` | One camera, switches, stream picker |
 | `placeholder-timeline.svg` | Grid playback, speed slider, selection |
 | `placeholder-timelapse.svg` | Timelapse tab with progress |
-| `placeholder-notification.svg` | A desktop notification |
 | `placeholder-load.svg` | Load screen |
 
 ## Deploying

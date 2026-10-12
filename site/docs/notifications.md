@@ -5,7 +5,7 @@ description: Native desktop notifications for new Frigate alerts and detections,
 
 Chismoso can show a native notification whenever Frigate raises a new **alert**, and optionally a **detection**, with a snapshot of who was there.
 
-<img src="../img/placeholder-notification.svg" width="1200" height="750" alt="Illustration of a desktop notification titled “Front door · Alert” with a snapshot of a detected person." loading="lazy">
+<img src="../img/notification.jpg" width="1200" height="750" alt="A Windows notification from Chismoso: “Person at Garage. New alert. Open the app to watch.” with a camera snapshot of the person outlined." loading="lazy">
 
 ## Turning them on
 
