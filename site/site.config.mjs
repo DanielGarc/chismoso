@@ -6,7 +6,7 @@ export default {
 
   // GitHub repository, "owner/name". Release downloads, source links,
   // issue links and "Edit this page on GitHub" all come from this.
-  repo: 'caprichosos/chismoso',
+  repo: 'DanielGarc/chismoso',
   // Branch the docs are edited on (for "Edit this page" links).
   branch: 'main',
   // Where this folder sits inside the repo (for "Edit this page" links).

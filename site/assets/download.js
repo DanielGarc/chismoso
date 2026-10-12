@@ -26,7 +26,7 @@
 (function () {
   'use strict';
 
-  var CONFIG = /*CONFIG*/null || { repo: 'caprichosos/chismoso', storeUrls: {} };
+  var CONFIG = /*CONFIG*/null || { repo: 'DanielGarc/chismoso', storeUrls: {} };
   var REPO = CONFIG.repo;
   var STORE = CONFIG.storeUrls || {};
 
