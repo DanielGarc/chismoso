@@ -293,14 +293,38 @@
     });
   }
 
+  // A short row of direct links, one per platform, under the main button.
+  var QUICK = [
+    { id: 'win-exe', label: 'Windows' },
+    { id: 'mac-arm', label: 'Mac (Apple Silicon)' },
+    { id: 'mac-x64', label: 'Mac (Intel)' },
+    { id: 'deb', label: 'Linux .deb' },
+    { id: 'rpm', label: '.rpm' },
+    { id: 'appimage', label: 'AppImage' }
+  ];
+  function renderQuick(state) {
+    var rel = state.release;
+    if (!rel) return; // keep the static links to the download page
+    $all('[data-dl-quick]').forEach(function (box) {
+      box.textContent = '';
+      QUICK.forEach(function (q) {
+        var a = findAsset(rel, byId[q.id]);
+        if (!a) return;
+        if (box.childNodes.length) box.appendChild(document.createTextNode(' · '));
+        box.appendChild(el('a', { href: a.url, title: a.name + (a.size ? ' (' + fmtSize(a.size) + ')' : '') }, q.label));
+      });
+    });
+  }
+
   function render(state, arch) {
     renderPrimary(state, arch);
+    renderQuick(state);
     renderGroups(state, arch);
     renderMobile(state);
   }
 
   // ---- Start ------------------------------------------------------------------------
-  if (!document.querySelector('[data-dl-primary], [data-dl-groups], [data-mobile]')) return;
+  if (!document.querySelector('[data-dl-primary], [data-dl-groups], [data-mobile], [data-dl-quick]')) return;
   guessMacArch().then(function (arch) {
     var cached = readCache();
     render(cached || { status: 'loading' }, arch);

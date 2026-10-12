@@ -342,3 +342,6 @@ h2:hover .anchor, h3:hover .anchor, h4:hover .anchor { opacity: 1; }
 }
 .page-end { margin-bottom: 72px; }
 @media (max-width: 400px) { .gh-stars { display: none !important; } }
+
+.dl-quick { margin: 10px 0 0; color: var(--muted); font-size: .92rem; }
+.dl-quick a { color: var(--text); }

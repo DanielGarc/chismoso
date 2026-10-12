@@ -6,6 +6,8 @@ I mainly wanted an easy way to turn a day of camera footage into a short timelap
 
 ![Chismoso showing six cameras in a grid with the recordings timeline underneath](site/img/screenshot.jpg)
 
+**Download:** [Windows, macOS and Linux](https://chismoso.caprichosos.org/download.html), or grab a file from the [latest release](https://github.com/DanielGarc/chismoso/releases/latest). It's a beta and the installers aren't code-signed yet, so Windows and macOS will ask you to confirm the first time.
+
 - **Timelapses and exports.** Pick cameras and a time range, then make a timelapse at any speed (2×–3600×) or a real-time clip. Frigate renders it, and the app downloads it, can delete the server copy, and plays exports in-app.
 - **Live view.** A grid of cameras (snapshots, or live video) using Frigate's camera groups or your own layouts, and a full live view per camera with detect/record/snapshot switches. Live video tries WebRTC first, then MSE, then 1 fps snapshots, so something always shows.
 - **Recordings timeline.** Under the grid and under each camera is a bar you can zoom from weeks down to seconds, with alerts and detections marked on it. Click anywhere to play from that moment: one camera, or every camera in the layout in sync. A speed slider goes from −16× (reverse) to 16×.
