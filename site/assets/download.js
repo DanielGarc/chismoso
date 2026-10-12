@@ -293,32 +293,25 @@
     });
   }
 
-  // A short row of direct links, one per platform, under the main button.
-  var QUICK = [
-    { id: 'win-exe', label: 'Windows' },
-    { id: 'mac-arm', label: 'Mac (Apple Silicon)' },
-    { id: 'mac-x64', label: 'Mac (Intel)' },
-    { id: 'deb', label: 'Linux .deb' },
-    { id: 'rpm', label: '.rpm' },
-    { id: 'appimage', label: 'AppImage' }
-  ];
-  function renderQuick(state) {
+  // Three quiet OS links under the main button. Each gets the usual build for
+  // that OS; the other formats (.msi, .rpm, Intel vs Apple Silicon...) live on
+  // the download page.
+  function renderQuick(state, arch) {
     var rel = state.release;
     if (!rel) return; // keep the static links to the download page
-    $all('[data-dl-quick]').forEach(function (box) {
-      box.textContent = '';
-      QUICK.forEach(function (q) {
-        var a = findAsset(rel, byId[q.id]);
-        if (!a) return;
-        if (box.childNodes.length) box.appendChild(document.createTextNode(' · '));
-        box.appendChild(el('a', { href: a.url, title: a.name + (a.size ? ' (' + fmtSize(a.size) + ')' : '') }, q.label));
-      });
+    var pick = { windows: 'win-exe', mac: arch === 'x86' ? 'mac-x64' : 'mac-arm', linux: 'appimage' };
+    $all('[data-dl-quick] [data-dl-os]').forEach(function (link) {
+      var os = link.getAttribute('data-dl-os');
+      var a = pick[os] && findAsset(rel, byId[pick[os]]);
+      if (!a) return;
+      link.setAttribute('href', a.url);
+      link.setAttribute('title', a.name + (a.size ? ' (' + fmtSize(a.size) + ')' : ''));
     });
   }
 
   function render(state, arch) {
     renderPrimary(state, arch);
-    renderQuick(state);
+    renderQuick(state, arch);
     renderGroups(state, arch);
     renderMobile(state);
   }

@@ -104,8 +104,9 @@ code, kbd, pre { font-family: var(--mono); font-size: .9em; }
 .aside { max-width: 560px; margin: 12px auto 0; color: var(--muted); font-size: .95rem; }
 .dl-primary { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 30px; }
 .dl-meta { min-height: 1.5em; margin: 12px 0 0; color: var(--muted); font-size: .9rem; }
-.hero-links { margin: 6px 0 0; font-size: .95rem; }
-.hero-links a { margin: 0 6px; white-space: nowrap; }
+.hero-links { margin: 14px 0 0; font-size: .88rem; color: var(--muted); }
+.hero-links a { margin: 0 6px; white-space: nowrap; color: var(--muted); text-decoration: none; }
+.hero-links a:hover { color: var(--text); text-decoration: underline; }
 .shot { margin: 0; }
 .shot img, .hero-shot img { display: block; width: 100%; border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel); box-shadow: 0 30px 80px -30px rgba(0, 0, 0, .8), 0 0 0 1px rgba(255, 255, 255, .02); }
 .hero-shot { margin: 48px auto 0; max-width: 1040px; }
@@ -343,5 +344,7 @@ h2:hover .anchor, h3:hover .anchor, h4:hover .anchor { opacity: 1; }
 .page-end { margin-bottom: 72px; }
 @media (max-width: 400px) { .gh-stars { display: none !important; } }
 
-.dl-quick { margin: 10px 0 0; color: var(--muted); font-size: .92rem; }
-.dl-quick a { color: var(--text); }
+.dl-quick { display: flex; justify-content: center; gap: 4px; margin: 10px 0 0; }
+.dl-quick a { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 8px; color: var(--muted); font-size: .88rem; text-decoration: none; }
+.dl-quick a:hover, .dl-quick a:focus-visible { color: var(--text); background: var(--panel); }
+.dl-quick .i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
