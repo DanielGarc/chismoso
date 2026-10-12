@@ -50,6 +50,9 @@ pub struct UpdateInfo {
     pub current: String,
     pub notes: Option<String>,
     pub date: Option<String>,
+    /// Installing will ask for the computer's admin password (Linux
+    /// .deb/.rpm installs go through the system's package tools).
+    pub needs_password: bool,
 }
 
 /// How this device decodes video in the web view (Load screen).

@@ -70,7 +70,7 @@ function ask(message, okLabel = "OK", danger = false) {
 }
 
 // Errors from Rust may start with a machine-readable code ("code: message").
-const ERR_CODE = /^(session-expired|certificate-untrusted|certificate-changed):\s*/;
+const ERR_CODE = /^(session-expired|certificate-untrusted|certificate-changed|update-failed):\s*/;
 const errCode = (e) => (ERR_CODE.exec(typeof e === "string" ? e : e?.message || "") || [])[1];
 const errText = (e) => (typeof e === "string" ? e : e?.message || String(e)).replace(ERR_CODE, "");
 
@@ -1831,46 +1831,136 @@ window.addEventListener("beforeunload", () => closeMinute());
 
 // ══ Updates (desktop) ═══════════════════════════════════════════════
 // Releases on GitHub carry a signed latest.json; the backend checks it and
-// verifies the download's signature before installing. Checked at most once
-// a day on start, or on demand from About. Nothing installs without a click.
-const updateUi = { info: null, busy: false };
-async function checkForUpdate({ quiet = true } = {}) {
+// verifies the download's signature before installing. With automatic checks
+// on, the app asks GitHub at most once every 20 hours: shortly after start,
+// and again while it stays open (an hourly look at the clock, no network
+// unless a check is due, and never while the window is hidden). Nothing
+// installs without a click. Settings → Updates turns checks off or runs one.
+const UPDATE_EVERY = 20 * 3600e3;
+const updateUi = { info: null, busy: false, checkedAt: 0 };
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (_) { return null; } },
+  set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (_) {} },
+};
+const autoUpdates = () => store.get("updateAuto") !== "0";
+
+async function checkForUpdate({ manual = false } = {}) {
   if (!Platform.has("self_update") || updateUi.busy) return null;
+  $("#u-status").textContent = "Checking…";
   try {
     const info = await invoke("check_update");
     updateUi.info = info;
-    try { localStorage.setItem("updateCheckedAt", String(Date.now())); } catch (_) {}
-    if (info) showUpdateBar(info);
-    else if (!quiet) toast("You're on the latest version.");
-    $("#about-update").textContent = info ? `Version ${info.version} is available.` : "You're on the latest version.";
+    updateUi.checkedAt = Date.now();
+    store.set("updateCheckedAt", String(updateUi.checkedAt));
+    const skipped = info && store.get("updateSkip") === info.version;
+    if (info && (manual || !skipped)) showUpdateBar(info);
+    else if (manual) toast("You're on the latest version.");
+    const msg = !info ? "You're on the latest version."
+      : skipped && !manual ? `Version ${info.version} is available (you chose to skip it).`
+      : `Version ${info.version} is available.`;
+    $("#about-update").textContent = msg;
+    $("#u-status").textContent = `${msg} Checked just now.`;
     return info;
   } catch (e) {
-    if (!quiet) toast(`Couldn't check for updates: ${errText(e)}`, true);
+    $("#u-status").textContent = "Couldn't reach GitHub to check for updates.";
+    if (manual) toast(`Couldn't check for updates: ${errText(e)}`, true);
     return null;
   }
 }
+
+// Release notes arrive as Markdown-ish text ("- Fixed this"); show them as a
+// short plain list, never as HTML.
+function noteLines(notes) {
+  const lines = String(notes || "").split(/\r?\n/)
+    .map((l) => l.replace(/^\s*(?:[-*]|\d+\.)\s+/, "").replace(/[*_`#]/g, "").trim())
+    .filter((l) => l && !/^(full changelog|what's changed)/i.test(l));
+  return lines.length > 8 ? [...lines.slice(0, 8), `…and ${lines.length - 8} more`] : lines;
+}
+
 function showUpdateBar(info) {
-  $("#update-text").textContent = `${appInfo?.name || "Chismoso"} ${info.version} is available (you have ${info.current}).`;
+  const name = appInfo?.name || "Chismoso";
+  $("#update-text").textContent = `${name} ${info.version} is ready (you have ${info.current}).`;
+  $("#update-text").title = "";
+  const notes = noteLines(info.notes);
+  $("#update-notes").replaceChildren(...notes.map((l) => h("li", {}, l)));
+  $("#update-whatsnew").hidden = !notes.length;
+  setNotesOpen(false);
+  $("#update-go").textContent = "Update and restart";
+  $("#update-go").disabled = false;
+  $("#update-go").title = info.needs_password ? "Linux will ask for your password to install it." : "";
+  $("#update-web").hidden = true;
+  $("#update-skip").hidden = false;
+  $("#update-progress").hidden = true;
   $("#update-bar").hidden = false;
 }
+function setNotesOpen(open) {
+  $("#update-notes").hidden = !open;
+  $("#update-whatsnew").setAttribute("aria-expanded", String(open));
+  $("#update-whatsnew").textContent = open ? "Hide what's new" : "What's new";
+}
+function setProgress(p) {
+  $("#update-progress").hidden = p == null;
+  $("#update-progress i").style.width = `${Math.round((p || 0) * 100)}%`;
+}
+
+$("#update-whatsnew").addEventListener("click", () => setNotesOpen($("#update-notes").hidden));
 $("#update-later").addEventListener("click", () => { $("#update-bar").hidden = true; });
+$("#update-skip").addEventListener("click", () => {
+  if (updateUi.info) store.set("updateSkip", updateUi.info.version);
+  $("#update-bar").hidden = true;
+  toast(`Skipped ${updateUi.info?.version || "this version"}. You'll hear about the next one.`);
+});
+$("#update-web").addEventListener("click", () => {
+  invoke("open_path", { path: appInfo.download_page, reveal: false }).catch((e) => toast(errText(e), true));
+});
 $("#update-go").addEventListener("click", async () => {
-  if (updateUi.busy) return;
+  if (updateUi.busy || !updateUi.info) return;
   updateUi.busy = true;
   $("#update-go").disabled = true;
-  $("#update-text").textContent = "Downloading the update…";
-  try { await invoke("install_update"); } // restarts the app when done
-  catch (e) {
-    $("#update-text").textContent = `The update didn't install: ${errText(e)}`;
+  $("#update-skip").hidden = true;
+  $("#update-web").hidden = true;
+  const pw = updateUi.info.needs_password ? " Linux will ask for your password to install it." : "";
+  $("#update-text").textContent = `Downloading ${updateUi.info.version}…${pw}`;
+  setProgress(0);
+  try {
+    await invoke("install_update"); // the app restarts when this succeeds
+    $("#update-text").textContent = "Installed. Restarting…";
+  } catch (e) {
+    setProgress(null);
+    $("#update-text").textContent = "The update didn't install. You can try again, or download it from the website.";
+    $("#update-text").title = errText(e);
+    $("#update-go").textContent = "Try again";
     $("#update-go").disabled = false;
+    $("#update-web").hidden = false;
+    $("#update-skip").hidden = false;
+    // the pending update was used up; fetch it again (quietly) for the retry
+    invoke("check_update").then((info) => { updateUi.info = info; if (!info) $("#update-bar").hidden = true; }).catch(() => {});
   } finally { updateUi.busy = false; }
 });
 listen("update-progress", ({ payload }) => {
-  $("#update-text").textContent = `Downloading the update… ${Math.round(payload * 100)}%`;
+  setProgress(payload);
+  if (payload >= 1) $("#update-text").textContent = "Installing… Chismoso will restart in a moment.";
 });
-$("#about-check").addEventListener("click", () => checkForUpdate({ quiet: false }));
-Platform.info.then(() => {
-  let last = 0;
-  try { last = +localStorage.getItem("updateCheckedAt") || 0; } catch (_) {}
-  if (Date.now() - last > 20 * 3600e3) setTimeout(() => checkForUpdate(), 8000); // after start-up settles
+
+// Settings → Updates and About
+$("#about-check").addEventListener("click", () => checkForUpdate({ manual: true }));
+$("#u-check").addEventListener("click", () => checkForUpdate({ manual: true }));
+$("#u-auto").addEventListener("change", (e) => {
+  store.set("updateAuto", e.target.checked ? null : "0");
+  if (e.target.checked) maybeCheckForUpdate();
+});
+function maybeCheckForUpdate() {
+  if (!autoUpdates() || document.hidden) return;
+  const last = updateUi.checkedAt || +store.get("updateCheckedAt") || 0;
+  if (Date.now() - last > UPDATE_EVERY) checkForUpdate();
+}
+Platform.info.then((i) => {
+  if (!Platform.has("self_update")) return;
+  $("#u-version").textContent = `You have ${i.version}`;
+  $("#u-auto").checked = autoUpdates();
+  const last = +store.get("updateCheckedAt") || 0;
+  if (last) $("#u-status").textContent = `Last checked ${new Date(last).toLocaleString()}.`;
+  setTimeout(maybeCheckForUpdate, 8000); // after start-up settles
+  setInterval(maybeCheckForUpdate, 3600e3);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) maybeCheckForUpdate(); });
 });

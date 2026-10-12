@@ -41,6 +41,10 @@ pub async fn check_update(app: &AppHandle) -> Result<Option<super::UpdateInfo>, 
         current: u.current_version.clone(),
         notes: u.body.clone(),
         date: u.date.map(|d| d.to_string()),
+        needs_password: matches!(
+            tauri::utils::platform::bundle_type(),
+            Some(tauri::utils::config::BundleType::Deb | tauri::utils::config::BundleType::Rpm)
+        ),
     });
     *PENDING.lock().unwrap() = update;
     Ok(info)
@@ -62,7 +66,7 @@ pub async fn install_update(app: &AppHandle, progress: impl Fn(f64) + Send + 'st
             || {},
         )
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("update-failed: {e}"))?;
     app.restart()
 }
 
@@ -138,7 +142,8 @@ pub fn default_output_dir(_app: &AppHandle) -> String {
 /// used to launch programs.
 pub fn open_path(path: &str, reveal: bool, connected: Option<&str>) -> Result<(), String> {
     let target: std::ffi::OsString = if path.starts_with("http://") || path.starts_with("https://") {
-        if connected != Some(path.trim_end_matches('/')) {
+        let ours = path == crate::about::DOWNLOAD_PAGE;
+        if !ours && connected != Some(path.trim_end_matches('/')) {
             return Err("Only the connected Frigate server can be opened.".into());
         }
         path.into()

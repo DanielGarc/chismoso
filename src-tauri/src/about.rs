@@ -11,6 +11,8 @@ pub const IDENTIFIER: &str = env!("APP_IDENTIFIER");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const COMMIT: &str = env!("BUILD_COMMIT");
 pub const BUILT: &str = env!("BUILD_DATE");
+/// Where people download the app; offered when an in-app update fails.
+pub const DOWNLOAD_PAGE: &str = "https://chismoso.caprichosos.org/download.html";
 
 #[derive(Serialize)]
 pub struct Info {
@@ -22,6 +24,7 @@ pub struct Info {
     pub arch: &'static str,
     pub tauri: &'static str,
     pub debug: bool,
+    pub download_page: &'static str,
     /// What this platform can do; the UI shows or hides features by these.
     pub features: crate::platform::Features,
 }
@@ -36,6 +39,7 @@ pub fn info() -> Info {
         arch: std::env::consts::ARCH,
         tauri: tauri::VERSION,
         debug: cfg!(debug_assertions),
+        download_page: DOWNLOAD_PAGE,
         features: crate::platform::FEATURES,
     }
 }

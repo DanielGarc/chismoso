@@ -46,24 +46,43 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       id: ${{ steps.create.outputs.id }}
+      notes: ${{ steps.notes.outputs.notes }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.TAG }}
+          fetch-depth: 0
       - name: Check the tag matches Cargo.toml
         run: |
           v=$(grep -m1 '^version' src-tauri/Cargo.toml | cut -d'"' -f2)
           [ "v$v" = "$TAG" ] || { echo "::error::Tag $TAG but Cargo.toml says $v"; exit 1; }
+      # "What's new": the app-facing commits since the previous release.
+      # Website, CI, docs and version-bump commits are left out. The app shows
+      # these lines in its update bar (via latest.json).
+      - id: notes
+        run: |
+          prev=$(git describe --tags --abbrev=0 --match 'v*' "$TAG^" 2>/dev/null || true)
+          if [ -n "$prev" ]; then range="$prev..$TAG"; else range="$TAG"; fi
+          lines=$(git log "$range" --no-merges --format='- %s' \
+            | grep -viE '^- (release|website|site|ci|docs?|readme|launch)\b|website|readme|promo' || true)
+          [ -n "$lines" ] || lines="- Small fixes and improvements."
+          { echo 'notes<<CHISMOSO_EOF'; echo "$lines"; echo 'CHISMOSO_EOF'; } >> "$GITHUB_OUTPUT"
       - id: create
         uses: actions/github-script@v7
+        env:
+          NOTES: ${{ steps.notes.outputs.notes }}
         with:
           script: |
             const tag = process.env.TAG;
             const { owner, repo } = context.repo;
+            const body = `## What's new\n\n${process.env.NOTES}\n\n` +
+              `**Download:** https://chismoso.caprichosos.org/download.html\n\n` +
+              `The installers aren't code-signed yet: on Windows choose *More info → Run anyway*; ` +
+              `on macOS right-click the app and choose *Open* the first time. ` +
+              `Installed copies offer this update on their own.`;
             const existing = (await github.rest.repos.listReleases({ owner, repo, per_page: 50 })).data.find(r => r.tag_name === tag);
             const rel = existing ?? (await github.rest.repos.createRelease({
-              owner, repo, tag_name: tag, name: `Chismoso ${tag}`, draft: true,
-              generate_release_notes: true,
+              owner, repo, tag_name: tag, name: `Chismoso ${tag.replace(/^v/, '')}`, draft: true, body,
             })).data;
             core.setOutput('id', rel.id);
 
@@ -113,6 +132,7 @@ jobs:
         with:
           tauriScript: npx --yes @tauri-apps/cli@2
           releaseId: ${{ needs.draft.outputs.id }}
+          releaseBody: ${{ needs.draft.outputs.notes }}
           includeUpdaterJson: true
           args: ${{ matrix.args }}
 

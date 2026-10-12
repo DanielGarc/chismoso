@@ -82,10 +82,17 @@
 
 <!-- ── App shell ─────────────────────────────────────────── -->
 <div class="update-bar" id="update-bar" role="status" hidden>
-  <span id="update-text"></span>
-  <span class="grow"></span>
-  <button class="btn primary slim" id="update-go">Update and restart</button>
-  <button class="btn ghost slim" id="update-later">Later</button>
+  <div class="update-row">
+    <span id="update-text"></span>
+    <button class="link" id="update-whatsnew" aria-expanded="false" aria-controls="update-notes" hidden>What's new</button>
+    <span class="grow"></span>
+    <button class="btn primary slim" id="update-go">Update and restart</button>
+    <button class="btn slim" id="update-web" hidden>Download from the website</button>
+    <button class="btn ghost slim" id="update-later">Later</button>
+    <button class="btn ghost slim" id="update-skip">Skip this version</button>
+  </div>
+  <div class="update-progress" id="update-progress" hidden><i></i></div>
+  <ul class="update-notes" id="update-notes" hidden></ul>
 </div>
 <div id="shell" class="shell" hidden>
   <main>
@@ -282,6 +289,13 @@
             <div class="chips" id="n-cams"></div>
           </div>
           <div><button class="btn" id="n-test">Send a test notification</button></div>
+        </div>
+      </div>
+      <div class="card" id="updates-card" data-needs="self_update">
+        <div class="card-head"><h3>Updates</h3><span class="muted small" id="u-version"></span></div>
+        <div class="notify">
+          <label class="check"><input type="checkbox" id="u-auto"> <span>Check for updates automatically <span class="muted">(once a day, nothing installs without asking)</span></span></label>
+          <div class="u-row"><button class="btn" id="u-check">Check now</button><span class="muted small" id="u-status"></span></div>
         </div>
       </div>
       <div class="card">
