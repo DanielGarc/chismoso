@@ -1,6 +1,6 @@
 [package]
 name = "chismoso"
-version = "0.1.0"
+version = "0.3.0"
 description = "Lightweight client for Frigate NVR: live view, recordings, timelapses, alerts"
 edition = "2024"
 license = "MIT"
