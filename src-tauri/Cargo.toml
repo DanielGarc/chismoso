@@ -1,0 +1,39 @@
+[package]
+name = "frigate-desktop"
+version = "0.1.0"
+description = "Lightweight desktop client for Frigate NVR: live view, timelapses and exports, settings"
+edition = "2024"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "json", "rustls"] }
+chrono = "0.4"
+dirs = "7"
+anyhow = "1"
+tungstenite = { version = "0.30.0", default-features = false, features = ["handshake", "__rustls-tls"] }
+rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs", "std", "tls12", "logging"] }
+tiny_http = "0.12.0"
+getrandom = "0.4.3"
+rustls-platform-verifier = "0.7"
+sha2 = "0.11.0"
+tauri-plugin-notification = "2"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = { version = "2.0", features = ["v2_40"] }
+
+[features]
+# Serve the bundled ui/ folder (no dev server needed), so plain `cargo run` works.
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

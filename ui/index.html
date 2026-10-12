@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Frigate Desktop</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── App bar (also the window's title bar) ─────────────── -->
+<header class="appbar" data-tauri-drag-region>
+  <div class="appbar-brand" data-tauri-drag-region>
+    <span class="brand-mark tiny" aria-hidden="true"></span>
+    <span class="app-name" data-tauri-drag-region>Frigate Desktop</span>
+  </div>
+  <nav class="tabs" id="tabs" role="tablist" hidden>
+    <button class="tab active" data-view="live" role="tab" title="Live (Ctrl+1)"><svg viewBox="0 0 24 24"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4h9A2.5 2.5 0 0 1 17 6.5v1.6l3.4-2.1A1 1 0 0 1 22 6.9v10.2a1 1 0 0 1-1.6.9L17 15.9v1.6a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 3 17.5z"/></svg><span>Live</span></button>
+    <button class="tab" data-view="exports" role="tab" title="Timelapse (Ctrl+2)"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-7-7zm1 2v6.6l4.2 2.5-1 1.7L11 12.7V5z"/></svg><span>Timelapse</span></button>
+    <button class="tab" data-view="settings" role="tab" title="Settings (Ctrl+3)"><svg viewBox="0 0 24 24"><path d="M10.3 2h3.4l.5 2.6 1.6.7 2.2-1.5 2.4 2.4-1.5 2.2.7 1.6 2.6.5v3.4l-2.6.5-.7 1.6 1.5 2.2-2.4 2.4-2.2-1.5-1.6.7-.5 2.6h-3.4l-.5-2.6-1.6-.7-2.2 1.5-2.4-2.4 1.5-2.2-.7-1.6L2 13.7v-3.4l2.6-.5.7-1.6-1.5-2.2 2.4-2.4 2.2 1.5 1.6-.7zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"/></svg><span>Settings</span></button>
+  </nav>
+  <div class="appbar-tools" id="live-tools" hidden>
+    <div class="layout-pick">
+      <select id="layout" aria-label="Layout" title="Which cameras to show"></select>
+      <button class="btn icon slim" id="layout-edit" title="Edit layouts">✎</button>
+    </div>
+    <div class="seg mini" id="cols" title="Grid columns">
+      <button data-cols="0" class="on">Auto</button><button data-cols="1">1</button><button data-cols="2">2</button><button data-cols="3">3</button><button data-cols="4">4</button>
+    </div>
+    <label class="check small"><input type="checkbox" id="grid-live"> Live grid</label>
+  </div>
+  <div class="appbar-drag" data-tauri-drag-region></div>
+  <div class="menu-wrap" id="server-wrap" hidden>
+    <button class="server-chip" id="server-chip" aria-haspopup="menu" aria-expanded="false">
+      <span class="dot"></span><span id="server-name"></span><svg class="chev" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+    </button>
+    <div class="menu" id="server-menu" role="menu" hidden>
+      <div class="menu-head">
+        <strong id="menu-host"></strong>
+        <span class="muted small" id="menu-meta"></span>
+      </div>
+      <button role="menuitem" id="menu-open-web">Open Frigate in browser</button>
+      <button role="menuitem" id="menu-full">Full screen <kbd>F11</kbd></button>
+      <button role="menuitem" id="menu-about">About</button>
+      <div class="menu-sep"></div>
+      <button role="menuitem" id="logout">Disconnect</button>
+    </div>
+  </div>
+  <div class="winctl" id="winctl">
+    <button id="win-min" title="Minimize" aria-label="Minimize"><svg viewBox="0 0 10 10"><path d="M1 5h8"/></svg></button>
+    <button id="win-max" title="Maximize" aria-label="Maximize"><svg viewBox="0 0 10 10"><rect x="1.5" y="1.5" width="7" height="7"/></svg></button>
+    <button id="win-close" class="close" title="Close" aria-label="Close"><svg viewBox="0 0 10 10"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg></button>
+  </div>
+</header>
+
+<!-- ── Login ─────────────────────────────────────────────── -->
+<section id="login" class="login">
+  <form class="login-card" id="login-form" autocomplete="off">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div>
+        <h1 class="app-name">Frigate Desktop</h1>
+        <p class="muted">Live view, timelapses and settings for your NVR</p>
+      </div>
+    </div>
+    <label>Address
+      <input id="f-url" placeholder="https://frigate.local:8971" required>
+    </label>
+    <div class="row2">
+      <label>Username
+        <input id="f-user" placeholder="empty for port 5000">
+      </label>
+      <label>Password
+        <input id="f-pass" type="password">
+      </label>
+    </div>
+    <label class="check"><input id="f-insecure" type="checkbox"> <span>Trust this server's own certificate <span class="muted">(Frigate's default on 8971)</span></span></label>
+    <div class="cert-box" id="cert-box" hidden>
+      <p id="cert-msg"></p>
+      <code id="cert-fp" hidden></code>
+      <button type="button" class="btn" id="cert-trust">Trust and connect</button>
+    </div>
+    <p id="login-error" class="error" hidden></p>
+    <button class="btn primary big" id="login-btn" type="submit">Connect</button>
+    <p class="app-ver muted small" id="login-ver"></p>
+    <p class="hint">Use port 8971 with a Frigate user, or the internal port 5000 with no username. A trusted certificate is remembered; you'll be warned if it ever changes.</p>
+  </form>
+</section>
+
+<!-- ── App shell ─────────────────────────────────────────── -->
+<div id="shell" class="shell" hidden>
+  <main>
+    <!-- Live -->
+    <section class="view" id="view-live">
+      <div class="grid" id="grid"></div>
+      <div class="focus" id="focus" hidden>
+        <div class="focus-bar">
+          <button class="btn ghost" id="focus-back">← All cameras</button>
+          <strong id="focus-name"></strong>
+          <select id="focus-stream" hidden></select>
+          <span class="badge" id="focus-mode">connecting…</span>
+          <span class="grow"></span>
+          <div class="toggles" id="focus-toggles"></div>
+          <button class="btn ghost" id="focus-mute" title="Toggle sound">🔇 Muted</button>
+          <button class="btn ghost" id="focus-full" title="Full screen">⛶ Full screen</button>
+        </div>
+        <div class="stage" id="stage">
+          <video id="focus-video" autoplay playsinline muted></video>
+          <img id="focus-img" alt="" hidden>
+          <p class="stage-msg" id="focus-msg" hidden></p>
+          <div class="stage-time" id="stage-time"></div>
+        </div>
+      </div>
+      <div class="pb" id="pb">
+        <div class="pb-row">
+          <button class="btn icon" id="pb-back" title="Back 10 seconds (←)">⟲ 10</button>
+          <button class="btn icon play" id="pb-play" title="Play / pause (space)">❚❚</button>
+          <button class="btn icon" id="pb-fwd" title="Forward 10 seconds (→)">10 ⟳</button>
+          <div class="rate" id="pb-rate" title="Playback speed. Left of center plays backwards (J / L keys, double-click for 1×)">
+            <span class="rate-end">◀◀</span>
+            <input type="range" id="pb-speed" min="0" max="8" step="1" value="4" aria-label="Playback speed">
+            <span class="rate-end">▶▶</span>
+            <output id="pb-speed-val">1×</output>
+          </div>
+          <span class="pb-time" id="pb-time"></span>
+          <span class="grow"></span>
+          <div class="btn-group">
+            <button class="btn icon" id="ev-prev" title="Previous event ([)">⏮ Event</button>
+            <button class="btn icon" id="ev-next" title="Next event (])">Event ⏭</button>
+          </div>
+          <span class="pb-scope" id="pb-scope"></span>
+          <button class="btn icon" id="pb-select" title="Select a range to save as a clip or timelapse (or shift-drag on the bar)">✂ Clip</button>
+          <input type="date" id="pb-date" title="Jump to a day" aria-label="Jump to a day">
+          <button class="btn live" id="pb-live" title="Back to live">● Live</button>
+        </div>
+        <div class="tl-wrap" id="tl-wrap">
+          <div class="tl-head">
+            <span class="tl-range" id="tl-range"></span>
+            <span class="tl-legend"><i class="lg alert"></i>Alert <i class="lg detection"></i>Detection <i class="lg rec"></i>Recorded</span>
+            <span class="grow"></span>
+            <div class="seg mini" id="tl-zoom">
+              <button data-z="out" title="Zoom out (-)">−</button><button data-span="3600">1h</button><button data-span="21600">6h</button><button data-span="86400">1d</button><button data-span="604800">7d</button><button data-z="in" title="Zoom in (+)">+</button>
+            </div>
+          </div>
+          <canvas class="timeline" id="timeline"></canvas>
+          <div class="ev-card" id="ev-card" hidden>
+            <img id="ev-img" alt="">
+            <div><strong id="ev-title"></strong><span id="ev-time"></span></div>
+          </div>
+          <div class="sel-pop" id="sel-pop" hidden>
+            <span class="sel-info" id="sel-info"></span>
+            <button class="btn icon" id="sel-play">▶ Play</button>
+            <button class="btn icon" id="sel-clip">Save clip</button>
+            <button class="btn icon" id="sel-tl">Timelapse…</button>
+            <button class="btn icon slim" id="sel-clear" title="Clear selection (Esc)">✕</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Exports / timelapse -->
+    <section class="view" id="view-exports" hidden>
+      <div class="cols2">
+        <div class="card form-card">
+          <div class="card-head">
+            <h3>New export</h3>
+            <div class="seg" id="mode"><button data-mode="timelapse" class="on">Timelapse</button><button data-mode="realtime">Real-time clip</button></div>
+          </div>
+
+          <div class="field">
+            <div class="field-head"><span>Cameras</span><span><button class="link" id="cam-all">All</button> · <button class="link" id="cam-none">None</button></span></div>
+            <div class="chips" id="cam-chips"></div>
+          </div>
+
+          <div class="field">
+            <div class="field-head"><span>Time range</span><span class="muted small" id="span-out"></span></div>
+            <div class="range">
+              <label for="t-start">From</label><input type="datetime-local" id="t-start">
+              <label for="t-end">To</label><input type="datetime-local" id="t-end">
+            </div>
+            <div class="presets" id="presets">
+              <button data-h="1">Last hour</button><button data-h="24">Last 24 h</button><button data-day="0">Today</button><button data-day="1">Yesterday</button><button data-h="168">Last 7 days</button>
+            </div>
+          </div>
+
+          <div class="field" id="tl-opts">
+            <div class="field-head"><span>Length</span>
+              <div class="seg mini" id="len-mode"><button data-lm="length" class="on">Target length</button><button data-lm="speed">Speed</button></div>
+            </div>
+            <div class="presets" id="len-presets">
+              <button data-len="15">15 s</button><button data-len="30">30 s</button><button data-len="60">1 min</button><button data-len="120">2 min</button><button data-len="300">5 min</button><button data-len="600">10 min</button>
+            </div>
+            <div id="speed-box" hidden>
+              <div class="speed-row">
+                <input type="range" id="speed" min="0" max="1000" step="1" aria-label="Speed">
+                <output id="speed-out">60×</output>
+              </div>
+              <div class="presets" id="speed-presets">
+                <button data-s="10">10×</button><button data-s="25">25×</button><button data-s="60">60×</button><button data-s="300">300×</button><button data-s="720">720×</button><button data-s="1440">1440×</button>
+              </div>
+            </div>
+
+            <div class="field-head top-gap"><span>Render</span></div>
+            <div class="seg wide" id="render">
+              <button data-r="fast" class="on"><b>Fast</b><small>keyframes only</small></button>
+              <button data-r="smooth"><b>Smooth</b><small>every frame</small></button>
+            </div>
+            <p class="hint-line" id="render-hint"></p>
+            <details class="adv">
+              <summary>More options</summary>
+              <label class="inline">Frame rate <input type="number" id="fps" min="10" max="60" value="30" class="narrow"> fps</label>
+            </details>
+          </div>
+
+          <div class="summary" id="estimate"></div>
+
+          <div class="field">
+            <span>Save to</span>
+            <div class="row-btn">
+              <input id="out-dir" aria-label="Output folder">
+              <button class="btn ghost" id="open-out">Open</button>
+            </div>
+            <label class="check small"><input type="checkbox" id="delete-after"> Delete the server copy after downloading</label>
+          </div>
+          <p class="error" id="export-error" hidden></p>
+          <button class="btn primary big" id="go">Create</button>
+        </div>
+
+        <div class="stack">
+          <div class="card" id="jobs-card" hidden>
+            <div class="card-head"><h3>Progress</h3><button class="link" id="jobs-clear">Clear finished</button></div>
+            <div id="jobs"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>On the server</h3><button class="link" id="exports-refresh">Refresh</button></div>
+            <div id="server-exports" class="exports-list"><p class="muted">Loading…</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section class="view" id="view-settings" hidden>
+      <div class="card">
+        <div class="card-head"><h3>System</h3><button class="link" id="stats-refresh">Refresh</button></div>
+        <div id="system"><p class="muted">Loading…</p></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Load from this app</h3><span class="muted small">last minute · updates every 5 s</span></div>
+        <div id="load"><p class="muted">Measuring…</p></div>
+      </div>
+      <div class="card" id="notify-card">
+        <div class="card-head"><h3>Notifications</h3><span class="muted small">Native desktop notifications while the app is running</span></div>
+        <div class="notify">
+          <label class="check"><input type="checkbox" id="n-enabled"> <span>Notify me about new alerts</span></label>
+          <label class="check"><input type="checkbox" id="n-detections"> <span>Also detections <span class="muted">(can be a lot)</span></span></label>
+          <label class="inline">At most one per camera every
+            <select id="n-cooldown"><option value="10">10 s</option><option value="30">30 s</option><option value="60">1 min</option><option value="300">5 min</option><option value="900">15 min</option></select>
+          </label>
+          <div class="field">
+            <div class="field-head"><span>Cameras <span class="muted small">(none picked = all)</span></span><span><button class="link" id="n-all">All</button> · <button class="link" id="n-none">None</button></span></div>
+            <div class="chips" id="n-cams"></div>
+          </div>
+          <div><button class="btn" id="n-test">Send a test notification</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Cameras</h3><span class="muted small">Switches apply right away and last until Frigate restarts. To make them permanent, change config.yml.</span></div>
+        <div id="cam-switches"></div>
+      </div>
+      <div class="card" id="config-card">
+        <div class="card-head">
+          <h3>Configuration <span class="muted small">config.yml</span></h3>
+          <div class="btns">
+            <button class="btn ghost" id="cfg-reload">Reload</button>
+            <button class="btn ghost" id="cfg-save">Save</button>
+            <button class="btn primary" id="cfg-save-restart">Save &amp; restart</button>
+          </div>
+        </div>
+        <p class="muted small">Frigate checks the file before saving. Most changes need a restart to take effect.</p>
+        <pre class="notice" id="cfg-msg" hidden></pre>
+        <div class="editor">
+          <pre class="gutter" id="cfg-gutter" aria-hidden="true"></pre>
+          <textarea id="cfg" spellcheck="false" wrap="off"></textarea>
+        </div>
+        <div class="card-foot">
+          <span class="muted small" id="cfg-state"></span>
+          <button class="btn danger" id="restart">Restart Frigate</button>
+        </div>
+      </div>
+      <div class="card" id="config-noadmin" hidden>
+        <p class="muted">Editing the configuration needs an admin account. You're signed in as <strong id="role-name"></strong>.</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Video player for exports -->
+<dialog id="player">
+  <div class="player-head"><strong id="player-title"></strong><button class="btn ghost" id="player-close">Close</button></div>
+  <video id="player-video" controls autoplay playsinline></video>
+</dialog>
+
+<dialog id="layout-dlg" class="dlg">
+  <form method="dialog" id="layout-form">
+    <div class="dlg-head"><h3>Layouts</h3><button class="btn ghost slim" value="cancel" formnovalidate>Close</button></div>
+    <div class="dlg-body">
+      <label>Layout
+        <select id="lay-pick"></select>
+      </label>
+      <label>Name <input id="lay-name" required maxlength="40" placeholder="e.g. Outside"></label>
+      <div class="field-head"><span class="muted small">Cameras and order</span><span class="muted small">Tick to show · arrows to reorder</span></div>
+      <ul class="lay-cams" id="lay-cams"></ul>
+      <label class="inline">Columns
+        <select id="lay-cols"><option value="0">Auto</option><option>1</option><option>2</option><option>3</option><option>4</option></select>
+      </label>
+      <p class="muted small" id="lay-note"></p>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn danger" id="lay-delete">Delete</button>
+      <span class="grow"></span>
+      <button type="button" class="btn" id="lay-new">New layout</button>
+      <button type="button" class="btn primary" id="lay-save">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="about" class="dlg about">
+  <form method="dialog">
+    <div class="dlg-head"><h3 id="about-name"></h3><button class="btn ghost slim" value="cancel">Close</button></div>
+    <div class="dlg-body">
+      <p class="muted">A lightweight desktop client for Frigate NVR. Not affiliated with the Frigate project.</p>
+      <dl class="kv" id="about-kv"></dl>
+      <div class="btns"><button type="button" class="btn" id="about-copy">Copy version info</button></div>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="ask" class="ask">
+  <p id="ask-msg"></p>
+  <div class="btns"><button class="btn ghost" id="ask-cancel">Cancel</button><button class="btn primary" id="ask-ok">OK</button></div>
+</dialog>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="webrtc.js"></script>
+<script src="playback.js"></script>
+<script src="timeline.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
