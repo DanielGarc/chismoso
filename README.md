@@ -2,7 +2,7 @@
 
 A small desktop app for [Frigate NVR](https://frigate.video), for Windows, macOS and Linux. Not affiliated with the Frigate project.
 
-I mainly wanted an easy way to turn a day of camera footage into a short timelapse. That works now. Along the way it picked up live view, a recordings timeline, clips and notifications too.
+Turn a day of camera footage into a short timelapse, and also watch live, scrub through recordings, save clips and get notified about alerts.
 
 ![Chismoso showing six cameras in a grid with the recordings timeline underneath](site/img/screenshot.jpg)
 
