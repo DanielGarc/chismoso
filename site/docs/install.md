@@ -32,13 +32,14 @@ There are two builds. Pick the one for your Mac:
 Not sure? Apple menu → **About This Mac**: a **Chip** line means Apple Silicon, a **Processor** line means Intel.
 
 1. Open the `.dmg` and drag **Chismoso** into **Applications**.
-2. The first time, **right-click** (or Control-click) Chismoso in Applications and choose **Open**, then **Open** again. macOS asks because the app isn't notarized by Apple yet. You only need to do this once.
+2. Open Chismoso. The first time, macOS stops it because the app isn't notarized by Apple yet. Go to **System Settings → Privacy & Security**, scroll down to the message about Chismoso and click **Open Anyway** (on macOS 14 and older you can instead right-click the app, choose **Open**, then **Open** again). You only need to do this once.
 
 > [!TIP]
-> If macOS says the app "is damaged and can't be opened", it's the same quarantine check being stricter. Run this once in Terminal, then open the app normally:
+> If macOS says the app "is damaged and can't be opened" (versions 0.3.2 and older on Apple Silicon), run this once in Terminal, then open the app normally:
 >
 > ```sh
 > xattr -dr com.apple.quarantine "/Applications/Chismoso.app"
+> codesign --force --deep -s - "/Applications/Chismoso.app"
 > ```
 
 To get notifications, allow them when asked, or later in **System Settings → Notifications → Chismoso**.
