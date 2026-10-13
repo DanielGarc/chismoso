@@ -1829,6 +1829,65 @@ $("#about-copy").addEventListener("click", async () => {
 });
 window.addEventListener("beforeunload", () => closeMinute());
 
+// ══ Appearance (themes) ═════════════════════════════════════════════
+// theme.js applies the saved theme before the page draws; this is just the
+// Settings card. Custom colours preview live as you pick them.
+function renderThemeUi() {
+  const id = Theme.current();
+  $("#t-theme").value = id;
+  $("#t-custom").hidden = id !== "custom";
+  if (id !== "custom") return;
+  const t = Theme.custom();
+  $("#t-base").value = t.base;
+  const r = Theme.resolved(t);
+  for (const k of Theme.keys) $(`#t-${k}`).value = r[k];
+  const low = Math.min(Theme.contrast(r.text, r.bg), Theme.contrast(r.text, r.panel));
+  $("#t-contrast").hidden = low >= 4.5;
+  $("#t-contrast").textContent = "Text may be hard to read on this background. Try a lighter or darker text colour.";
+}
+$("#t-theme").addEventListener("change", (e) => {
+  const id = e.target.value;
+  if (id === "custom" && !localStorage.getItem("customTheme")) {
+    // start the custom theme from whatever is on screen now
+    Theme.saveCustom({ base: document.documentElement.dataset.theme || "dark", name: "Custom" });
+  } else Theme.set(id);
+  renderThemeUi();
+});
+$("#t-base").addEventListener("change", (e) => { Theme.saveCustom({ ...Theme.custom(), base: e.target.value }); renderThemeUi(); });
+for (const k of Theme.keys) {
+  $(`#t-${k}`).addEventListener("input", (e) => {
+    Theme.saveCustom({ ...Theme.custom(), [k]: e.target.value });
+    const r = Theme.resolved(Theme.custom());
+    $("#t-contrast").hidden = Math.min(Theme.contrast(r.text, r.bg), Theme.contrast(r.text, r.panel)) >= 4.5;
+  });
+}
+$("#t-reset").addEventListener("click", () => {
+  const t = Theme.custom();
+  Theme.saveCustom({ base: t.base, name: t.name });
+  renderThemeUi();
+});
+$("#t-copy").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(Theme.exportCustom()); toast("Theme copied. Anyone can paste it in Settings → Appearance."); }
+  catch (_) { toast("Couldn't reach the clipboard.", true); }
+});
+$("#t-paste-open").addEventListener("click", () => {
+  const open = $("#t-paste").hidden;
+  $("#t-paste").hidden = !open;
+  $("#t-paste-open").setAttribute("aria-expanded", String(open));
+  $("#t-paste-err").textContent = "";
+  if (open) $("#t-paste-text").focus();
+});
+$("#t-paste-apply").addEventListener("click", () => {
+  try {
+    const t = Theme.importCustom($("#t-paste-text").value);
+    $("#t-paste").hidden = true;
+    $("#t-paste-text").value = "";
+    renderThemeUi();
+    toast(`Using “${t.name}”.`);
+  } catch (e) { $("#t-paste-err").textContent = e.message; }
+});
+renderThemeUi();
+
 // ══ Updates (desktop) ═══════════════════════════════════════════════
 // Releases on GitHub carry a signed latest.json; the backend checks it and
 // verifies the download's signature before installing. With automatic checks

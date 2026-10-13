@@ -4,7 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Chismoso</title>
+  <link rel="stylesheet" href="themes.css">
   <link rel="stylesheet" href="style.css">
+  <script src="theme.js"></script>
 </head>
 <body>
 
@@ -289,6 +291,41 @@
             <div class="chips" id="n-cams"></div>
           </div>
           <div><button class="btn" id="n-test">Send a test notification</button></div>
+        </div>
+      </div>
+      <div class="card" id="theme-card">
+        <div class="card-head"><h3>Appearance</h3></div>
+        <div class="notify">
+          <label class="inline">Theme
+            <select id="t-theme">
+              <option value="system">Match my system</option>
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+              <option value="black">Black</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+          <div id="t-custom" class="t-custom" hidden>
+            <label class="inline">Start from
+              <select id="t-base"><option value="dark">Dark</option><option value="light">Light</option><option value="black">Black</option></select>
+            </label>
+            <div class="t-colors">
+              <label class="t-color"><input type="color" id="t-accent"><span>Accent</span></label>
+              <label class="t-color"><input type="color" id="t-bg"><span>Background</span></label>
+              <label class="t-color"><input type="color" id="t-panel"><span>Panels</span></label>
+              <label class="t-color"><input type="color" id="t-text"><span>Text</span></label>
+            </div>
+            <p class="small muted" id="t-contrast" hidden></p>
+            <div class="u-row">
+              <button class="btn" id="t-reset">Reset colors</button>
+              <button class="btn" id="t-copy">Copy theme</button>
+              <button class="btn" id="t-paste-open" aria-expanded="false" aria-controls="t-paste">Paste a theme…</button>
+            </div>
+            <div id="t-paste" class="t-paste" hidden>
+              <textarea id="t-paste-text" rows="3" spellcheck="false" placeholder="Paste a theme someone shared with “Copy theme”"></textarea>
+              <div class="u-row"><button class="btn primary" id="t-paste-apply">Use this theme</button><span class="error small" id="t-paste-err"></span></div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="card" id="updates-card" data-needs="self_update">

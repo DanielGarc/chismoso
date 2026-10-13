@@ -18,6 +18,11 @@ A lightweight client for Frigate NVR: Rust + Tauri 2, plain HTML/CSS/JS UI
     crates that need CMake or system libraries.
 - Commands the UI calls live in `src-tauri/src/commands.rs` and are registered
   in `lib.rs`. `main.rs` is the desktop entry point only.
+- Colours: only `var(--token)` in `ui/style.css`; the values live in `ui/themes.css`
+  (dark, light, black; custom themes derive from them in `ui/theme.js`). Video
+  overlays may stay fixed black/white. New colour → add a token to every theme.
+- Icons: edit `design/icon.svg`, then `sh dev/make-icons.sh` (app, installers,
+  Android, website).
 - Errors shown to users: plain sentences, no jargon. Rust error strings may
   start with a code (`session-expired:`, `certificate-changed:`) the UI maps.
 

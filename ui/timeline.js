@@ -27,6 +27,7 @@ class Timeline {
     this.sel = null;            // { a, b } selected range, or null
     this.selectMode = false;
     this.readColors();
+    document.addEventListener("themechange", () => { this.readColors(); this.lastKey = null; this.draw(); });
     const now = Date.now() / 1000;
     this.setView(now - 3600, now + 120);
     this.bind();
