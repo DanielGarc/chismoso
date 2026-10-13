@@ -46,7 +46,7 @@ Yes, over a VPN or any route that reaches your Frigate server. Live video will u
 
 ### Does it work with several Frigate servers?
 
-One at a time. **Disconnect** from the server menu and sign in to another. Pinned certificates and load history are kept per server.
+One at a time. **Sign out** from the server menu and sign in to another. Pinned certificates and load history are kept per server.
 
 ### Is there an Android or iOS app?
 
@@ -60,7 +60,7 @@ Not yet. Two-way audio and PTZ controls are on the list of things that aren't in
 
 ### Is my password stored?
 
-No, never. Only the address, username and your certificate choice are remembered.
+No, never. Only the address, username and your certificate choice are remembered. If you tick **Keep me signed in**, Chismoso also keeps Frigate's session pass so it can sign in by itself, but still not your password. See [Keep me signed in](sign-in.md#keep-me-signed-in).
 
 ### Does the app send anything anywhere?
 

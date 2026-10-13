@@ -18,6 +18,7 @@ mod media;
 pub mod metrics;
 mod mse;
 mod notify;
+mod session;
 pub mod platform;
 pub mod tls;
 
@@ -39,6 +40,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::connect,
+            commands::resume,
             commands::disconnect,
             commands::cameras,
             commands::webrtc_answer,

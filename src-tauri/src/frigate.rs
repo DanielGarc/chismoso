@@ -19,6 +19,9 @@ use std::time::Duration;
 use crate::metrics;
 use crate::tls::{self, Trust};
 
+/// Called with the new session token whenever Frigate renews it.
+pub type TokenListener = Arc<dyn Fn(&str) + Send + Sync>;
+
 #[derive(Clone)]
 pub struct Frigate {
     base: String,
@@ -26,6 +29,7 @@ pub struct Frigate {
     /// Shared by every clone, so a token Frigate refreshes reaches all threads.
     token: Arc<RwLock<Option<String>>>,
     trust: Trust,
+    on_token: Option<TokenListener>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -97,6 +101,29 @@ impl Frigate {
     /// endpoint (e.g. port 5000 or auth disabled).
     /// `trust` decides how the server's certificate is checked (see tls.rs).
     pub fn connect(url: &str, user: &str, password: &str, trust: Trust) -> Result<Self> {
+        let mut client = Self::build(url, trust)?;
+        if !user.trim().is_empty() {
+            client.login(user.trim(), password)?;
+        }
+        Ok(client)
+    }
+
+    /// Picks up a session saved earlier ("Keep me signed in"): no password,
+    /// just Frigate's session token, checked against the server before use.
+    /// An expired or revoked token fails with `session-expired:`.
+    pub fn resume(url: &str, token: &str, trust: Trust) -> Result<Self> {
+        let client = Self::build(url, trust)?;
+        *client.token.write().unwrap() = Some(token.to_string());
+        client.ok(client.req(Method::GET, "/api/profile"))?;
+        Ok(client)
+    }
+
+    /// Reports renewed session tokens (so a kept session stays current).
+    pub fn on_token(&mut self, f: TokenListener) {
+        self.on_token = Some(f);
+    }
+
+    fn build(url: &str, trust: Trust) -> Result<Self> {
         let base = normalize_url(url)?;
         let http = Client::builder()
             .tls_backend_preconfigured(tls::client_config(&trust).context("TLS setup failed")?)
@@ -105,11 +132,7 @@ impl Frigate {
             .build()
             .context("could not create HTTP client")?;
 
-        let mut client = Self { base, http, token: Arc::new(RwLock::new(None)), trust };
-        if !user.trim().is_empty() {
-            client.login(user.trim(), password)?;
-        }
-        Ok(client)
+        Ok(Self { base, http, token: Arc::new(RwLock::new(None)), trust, on_token: None })
     }
 
     pub fn base_url(&self) -> &str {
@@ -132,7 +155,13 @@ impl Frigate {
     /// Frigate renews the session cookie shortly before it expires; keep it.
     fn refresh_token(&self, resp: &Response) {
         if let Some(t) = token_from_cookies(resp) {
-            *self.token.write().unwrap() = Some(t);
+            let mut cur = self.token.write().unwrap();
+            if cur.as_deref() != Some(t.as_str()) {
+                if let Some(f) = &self.on_token {
+                    f(&t);
+                }
+                *cur = Some(t);
+            }
         }
     }
 

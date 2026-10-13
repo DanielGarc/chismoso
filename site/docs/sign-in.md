@@ -41,9 +41,28 @@ Frigate accounts have a role, and Chismoso follows it:
 
 Chismoso remembers the address, username, the "trust this certificate" choice and the pinned fingerprint, so next time you only type your password. **Your password is never stored.** See [Privacy & security](privacy-and-security.md) for the full list.
 
+The sign-in fields are labelled for password managers, so Bitwarden, 1Password and the like can recognise them. On phones their autofill should offer to fill them; on a computer, copy and paste from your password manager works everywhere.
+
 When your Frigate session expires, Chismoso takes you back to the sign-in screen with the details filled in.
 
-To switch servers or sign out, open the **server menu** (the server's name at the top right) and choose **Disconnect**.
+To switch servers or sign out, open the **server menu** (the server's name at the top right) and choose **Sign out**.
+
+## Keep me signed in
+
+Tick **Keep me signed in** and Chismoso signs in by itself the next time it opens, without your password. It does this by keeping Frigate's *session pass* (the token Frigate gives the app after you sign in), **not your password**:
+
+- The pass is saved in Chismoso's own data folder, readable only by your user account.
+- Frigate renews it while you use the app, so using it regularly keeps you signed in. If it expires (you haven't opened the app for a while), you sign in once more.
+- How long a pass lasts is set in Frigate, with `session_length` under `auth` in its config (in seconds; the default is 86400, one day). A longer value means fewer sign-ins:
+
+  ```yaml
+  auth:
+    session_length: 2592000   # 30 days
+  ```
+
+- **Sign out** in the server menu deletes the pass immediately. Unticking the box and signing in also removes it.
+- If the server is offline when Chismoso starts, the sign-in screen says so; press **Connect** to try the saved pass again.
+- A saved pass only works on that Frigate server and only until it expires; it can't reveal your password. If you think one was copied off your computer, have Frigate sign everyone out by changing its JWT secret (see Frigate's authentication docs).
 
 ## If it doesn't connect
 

@@ -24,8 +24,9 @@ That's the whole list. Video from your cameras goes from Frigate to your screen 
 | Notification settings | App preferences | — |
 | 24-hour load trends, per server | App local storage | The [Load screen](load.md) |
 | Exported videos | Your chosen folder | That's what you asked for |
+| Frigate's session pass, only if you tick **Keep me signed in** | App data folder, readable only by you | Signing in by itself next time ([details](sign-in.md#keep-me-signed-in)) |
 
-**Your password is never stored.** While you're signed in, Chismoso holds Frigate's session token in memory; it's gone when you quit or disconnect.
+**Your password is never stored.** While you're signed in, Chismoso holds Frigate's session token in memory; it's gone when you quit or sign out, unless you chose **Keep me signed in**, in which case it's also kept on disk until you sign out or it expires.
 
 ## Certificate pinning
 

@@ -22,7 +22,7 @@ const media = (path) => MEDIA + path;
 
 // ── remembered preferences (never the password) ────────────────────
 const prefs = Object.assign({
-  url: "https://frigate.local:8971", user: "admin", selfSigned: false, pins: {},
+  url: "https://frigate.local:8971", user: "admin", selfSigned: false, pins: {}, keep: false,
   cols: 0, gridLive: false, outDir: "", mode: "timelapse", speed: 60, fps: 30,
   deleteAfter: false, selected: [], layout: "all", layouts: [],
 }, JSON.parse(localStorage.getItem("prefs") || "{}"));
@@ -87,13 +87,20 @@ async function call(cmd, args) {
 // ══ Login ═══════════════════════════════════════════════════════════
 $("#f-url").value = prefs.url;
 $("#f-user").value = prefs.user;
+$("#f-keep").checked = !!prefs.keep;
 ($("#f-url").value ? $("#f-pass") : $("#f-url")).focus();
 
 async function connect({ trustNew = false } = {}) {
+  // Signed in with "Keep me signed in" but the server was offline at start?
+  // Connect with an empty password retries the kept session.
+  if (!trustNew && !$("#f-pass").value && prefs.keep && $("#f-url").value.trim() === prefs.url && $("#f-user").value.trim() === prefs.user) {
+    if (await resumeSession()) return;
+  }
   const btn = $("#login-btn"), err = $("#login-error");
   btn.disabled = true; btn.textContent = "Connecting…"; err.hidden = true; $("#cert-box").hidden = true; btn.hidden = false;
   prefs.url = $("#f-url").value.trim();
   prefs.user = $("#f-user").value.trim();
+  prefs.keep = $("#f-keep").checked;
   // A server's own (self-signed) certificate is trusted per address: once you
   // accept it, its fingerprint is pinned and checked on every connection.
   if (trustNew) { delete prefs.pins[prefs.url]; prefs.trusted = { ...prefs.trusted, [prefs.url]: true }; }
@@ -102,7 +109,7 @@ async function connect({ trustNew = false } = {}) {
   try {
     state.info = await invoke("connect", {
       url: prefs.url, user: prefs.user, password: $("#f-pass").value,
-      selfSigned, pinned: selfSigned ? prefs.pins[prefs.url] ?? null : null,
+      selfSigned, pinned: selfSigned ? prefs.pins[prefs.url] ?? null : null, keep: prefs.keep,
     });
     if (state.info.cert_fingerprint) { prefs.pins[prefs.url] = state.info.cert_fingerprint; savePrefs(); }
     $("#f-pass").value = "";
@@ -125,6 +132,32 @@ async function connect({ trustNew = false } = {}) {
     btn.disabled = false; btn.textContent = "Connect";
   }
 }
+// "Keep me signed in": the backend saved Frigate's session token (never the
+// password). On start, try it before showing the sign-in form.
+async function resumeSession() {
+  const btn = $("#login-btn"), err = $("#login-error");
+  btn.disabled = true; btn.textContent = "Signing in…"; err.hidden = true;
+  try {
+    const kept = await invoke("resume");
+    if (!kept) return false;
+    prefs.url = kept.url; prefs.user = kept.user; savePrefs();
+    $("#f-url").value = kept.url; $("#f-user").value = kept.user;
+    state.info = kept.info;
+    enterApp();
+    return true;
+  } catch (e) {
+    err.textContent = errCode(e) === "session-expired"
+      ? errText(e)
+      : `Couldn't sign in with your saved session: ${errText(e)} Press Connect to try again, or enter your password.`;
+    err.hidden = false;
+    $("#f-pass").focus();
+    return true; // handled (message shown)
+  } finally {
+    btn.disabled = false; btn.textContent = "Connect";
+  }
+}
+if (prefs.keep) resumeSession();
+
 $("#login-form").addEventListener("input", () => { $("#cert-box").hidden = true; $("#login-btn").hidden = false; });
 $("#login-form").addEventListener("submit", (ev) => { ev.preventDefault(); connect(); });
 $("#cert-trust").addEventListener("click", () => connect({ trustNew: true }));

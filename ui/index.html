@@ -46,7 +46,7 @@
       <button role="menuitem" id="menu-full" data-needs="window_fullscreen">Full screen <kbd>F11</kbd></button>
       <button role="menuitem" id="menu-about">About</button>
       <div class="menu-sep"></div>
-      <button role="menuitem" id="logout">Disconnect</button>
+      <button role="menuitem" id="logout">Sign out</button>
     </div>
   </div>
   <div class="winctl" id="winctl" data-needs="window_controls">
@@ -58,20 +58,21 @@
 
 <!-- ── Login ─────────────────────────────────────────────── -->
 <section id="login" class="login">
-  <form class="login-card" id="login-form" autocomplete="off">
+  <form class="login-card" id="login-form" autocomplete="on">
     <div class="login-brand">
       <span class="brand-mark" aria-hidden="true"></span>
       <h1 class="app-name">Chismoso</h1>
     </div>
     <label>Frigate address
-      <input id="f-url" placeholder="https://frigate.local:8971" required inputmode="url" autocapitalize="off" spellcheck="false">
+      <input id="f-url" name="url" placeholder="https://frigate.local:8971" required inputmode="url" autocomplete="url" autocapitalize="off" spellcheck="false">
     </label>
     <label>Username
-      <input id="f-user" placeholder="Not needed on port 5000" autocapitalize="off" spellcheck="false">
+      <input id="f-user" name="username" placeholder="Not needed on port 5000" autocomplete="username" autocapitalize="off" spellcheck="false">
     </label>
     <label>Password
-      <input id="f-pass" type="password">
+      <input id="f-pass" name="password" type="password" autocomplete="current-password">
     </label>
+    <label class="check" title="Remembers Frigate's sign-in session on this device, not your password. Signing out forgets it."><input type="checkbox" id="f-keep"> <span>Keep me signed in</span></label>
     <div class="cert-box" id="cert-box" hidden>
       <p id="cert-msg"></p>
       <button type="button" class="btn" id="cert-trust">Trust and connect</button>

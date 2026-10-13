@@ -3,7 +3,7 @@
 
 use crate::frigate::{Camera, CameraGroup, ExportInfo, ExportMode, Frigate, ReviewItem};
 use crate::jobs::{self, JobSpec, Update};
-use crate::{about, metrics, mse, notify, platform, tls};
+use crate::{about, metrics, mse, notify, platform, session, tls};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -62,40 +62,128 @@ pub(crate) struct ConnectInfo {
 /// `self_signed`: trust a certificate the OS doesn't, pinned to `pinned`
 /// (the fingerprint trusted last time) or, on first use, to whatever the
 /// server presents. The UI stores the returned fingerprint.
+///
+/// `keep`: remember the session token (not the password) so the next start
+/// signs in by itself; see session.rs. Unchecked, any kept session is removed.
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn connect(
+    app: AppHandle,
     state: State<'_, AppState>,
     url: String,
     user: String,
     password: String,
     self_signed: bool,
     pinned: Option<String>,
+    keep: bool,
 ) -> CmdResult<ConnectInfo> {
+    let dir = session_dir(&app);
     let (c, info) = blocking(move || {
         let trust = tls::Trust { self_signed, pinned, ..Default::default() };
-        let c = Frigate::connect(&url, &user, &password, trust)?;
-        let (cameras, groups) = c.overview()?;
-        let info = ConnectInfo {
-            base_url: c.base_url().to_string(),
-            version: c.version().unwrap_or_else(|_| "unknown".into()),
-            role: c.role(),
-            cameras,
-            groups,
-            cert_fingerprint: if self_signed { c.cert_fingerprint() } else { None },
-        };
+        let mut c = Frigate::connect(&url, &user, &password, trust)?;
+        let info = overview_info(&c, self_signed)?;
+        match (keep, c.token(), &dir) {
+            (true, Some(token), Some(dir)) => {
+                let saved = session::Saved {
+                    url: info.base_url.clone(),
+                    user: user.trim().to_string(),
+                    token,
+                    self_signed,
+                    pinned: info.cert_fingerprint.clone(),
+                };
+                if let Err(e) = session::save(dir, &saved) {
+                    eprintln!("couldn't keep the session: {e}");
+                }
+                keep_current(&mut c, dir.clone(), saved);
+            }
+            (_, _, Some(dir)) => session::clear(dir),
+            _ => {}
+        }
         Ok((c, info))
     })
     .await?;
+    install_client(&state, c);
+    Ok(info)
+}
+
+/// Signs in with the session kept by "Keep me signed in", if there is one.
+/// Ok(None): nothing kept. An expired session is forgotten and reported as
+/// `session-expired:`; other failures (server offline, certificate changed)
+/// keep it so the next try can still use it.
+#[tauri::command]
+pub(crate) async fn resume(app: AppHandle, state: State<'_, AppState>) -> CmdResult<Option<KeptSession>> {
+    let Some(dir) = session_dir(&app) else { return Ok(None) };
+    let Some(saved) = session::load(&dir) else { return Ok(None) };
+    let (c, info) = blocking(move || {
+        let trust = tls::Trust { self_signed: saved.self_signed, pinned: saved.pinned.clone(), ..Default::default() };
+        let mut c = match Frigate::resume(&saved.url, &saved.token, trust) {
+            Ok(c) => c,
+            Err(e) => {
+                let msg = format!("{e:#}");
+                if msg.starts_with("session-expired:") {
+                    session::clear(&dir);
+                    anyhow::bail!("session-expired: Your saved sign-in has expired. Sign in again to continue.");
+                }
+                return Err(e);
+            }
+        };
+        let info = overview_info(&c, saved.self_signed)?;
+        let kept = KeptSession { url: saved.url.clone(), user: saved.user.clone(), info };
+        keep_current(&mut c, dir, saved);
+        Ok((c, kept))
+    })
+    .await?;
+    install_client(&state, c);
+    Ok(Some(info))
+}
+
+#[derive(Serialize)]
+pub(crate) struct KeptSession {
+    url: String,
+    user: String,
+    info: ConnectInfo,
+}
+
+fn session_dir(app: &AppHandle) -> Option<PathBuf> {
+    app.path().app_data_dir().ok()
+}
+
+/// Keeps the saved session current as Frigate renews the token.
+fn keep_current(c: &mut Frigate, dir: PathBuf, saved: session::Saved) {
+    let saved = Mutex::new(saved);
+    c.on_token(Arc::new(move |t: &str| {
+        let mut s = saved.lock().unwrap();
+        s.token = t.to_string();
+        let _ = session::save(&dir, &s);
+    }));
+}
+
+fn overview_info(c: &Frigate, self_signed: bool) -> anyhow::Result<ConnectInfo> {
+    let (cameras, groups) = c.overview()?;
+    Ok(ConnectInfo {
+        base_url: c.base_url().to_string(),
+        version: c.version().unwrap_or_else(|_| "unknown".into()),
+        role: c.role(),
+        cameras,
+        groups,
+        cert_fingerprint: if self_signed { c.cert_fingerprint() } else { None },
+    })
+}
+
+fn install_client(state: &State<'_, AppState>, c: Frigate) {
     if let Some(w) = state.watcher.lock().unwrap().take() {
         w.stop();
     }
     let old = state.client.lock().unwrap().replace(c);
     retire(old);
-    Ok(info)
 }
 
+/// Signing out also forgets a kept session.
 #[tauri::command]
-pub(crate) fn disconnect(state: State<'_, AppState>) {
+pub(crate) fn disconnect(app: AppHandle, state: State<'_, AppState>) {
+    if let Some(dir) = session_dir(&app) {
+        session::clear(&dir);
+    }
     if let Some(w) = state.watcher.lock().unwrap().take() {
         w.stop();
     }

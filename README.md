@@ -28,7 +28,7 @@ Sign in with your Frigate address and account:
 | `https://your-frigate:8971` | your Frigate user | With Frigate's default certificate, press **Trust and connect** when asked. The certificate is pinned, and you're warned if it changes. |
 | `http://your-frigate:5000` | leave empty | Internal port with no login. Only use it on a network you trust. |
 
-The address, username and options are remembered. **The password is never stored.**
+The address, username and options are remembered. **The password is never stored.** With **Keep me signed in**, Frigate's session token (not the password) is kept so the app signs in by itself until you sign out or the session expires.
 
 Editing the config needs an **admin** account. Viewers can still watch cameras and make exports.
 
