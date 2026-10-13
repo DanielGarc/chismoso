@@ -711,7 +711,12 @@ fn friendly_net_error(e: reqwest::Error) -> anyhow::Error {
     let host = e.url().and_then(|u| u.host_str()).unwrap_or("the server").to_string();
     if chain.contains(tls::CHANGED) {
         anyhow!("{}: this server's certificate is different from the one you trusted before. If you reinstalled Frigate or renewed its certificate, trust the new one; otherwise someone may be intercepting the connection.", tls::CHANGED)
-    } else if chain.contains("certificate") || chain.contains("unknownissuer") {
+    } else if chain.contains("certificaterequired") || chain.contains("certificate required") {
+        anyhow!("{host} asks for a client certificate (mutual TLS, often set up on a reverse proxy). Chismoso can't send one yet. Connect to Frigate directly, for example https://{host}:8971, or ask whoever runs the server. ({root})")
+    } else if chain.contains("invalid peer certificate") || chain.contains("unknownissuer") {
+        // Only the *server's* certificate failing our checks means "not trusted yet".
+        // Other TLS failures that merely mention certificates (alerts sent by the
+        // server, unsupported key types) fall through to the messages below.
         anyhow!("certificate-untrusted: Frigate's certificate isn't from a trusted authority (normal for Frigate's built-in certificate on port 8971).")
     } else if chain.contains("dns error") || chain.contains("failed to lookup") || chain.contains("no address associated") || chain.contains("name or service not known") {
         anyhow!("Couldn't find {host}: the name doesn't resolve on this network. If it only works at home, connect to your home Wi-Fi or VPN. ({root})")

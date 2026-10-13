@@ -22,6 +22,8 @@ Chismoso turns network errors into plain sentences. Here's what each one means a
 ### Certificate messages
 
 - **"This server uses its own certificate"** is normal for Frigate on port 8971. Choose **Trust and connect**. See [Frigate's own certificate](sign-in.md#frigates-own-certificate).
+- **"asks for a client certificate"** means the address goes through a reverse proxy or gateway that wants a certificate from your device (mutual TLS). Chismoso can't send one yet. Use Frigate's own address instead (usually `https://<server>:8971`), or ask whoever runs the server.
+- **"The certificate is trusted now, but the secure connection still failed"** means trusting wasn't the problem: the message after it says what was. Servers behind proxies or VPN gateways are the usual cause; try Frigate's own address (port 8971).
 - **"Warning: this server's certificate changed"** means it's not the certificate you trusted before. If you reinstalled Frigate or renewed its certificate, choose **Trust the new certificate**. If you didn't, don't: someone may be intercepting the connection.
 
 ## Live video

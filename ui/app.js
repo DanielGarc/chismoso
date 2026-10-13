@@ -116,7 +116,11 @@ async function connect({ trustNew = false } = {}) {
     enterApp();
   } catch (e) {
     const code = errCode(e);
-    if (code === "certificate-untrusted" || code === "certificate-changed") {
+    if (trustNew && code === "certificate-untrusted") {
+      // Trusting didn't help, so asking again would loop: show what went wrong.
+      err.textContent = "The certificate is trusted now, but the secure connection still failed. If this server is behind a reverse proxy or a VPN gateway, try Frigate's own address (port 8971). " + errText(e);
+      err.hidden = false;
+    } else if (code === "certificate-untrusted" || code === "certificate-changed") {
       // Offer to trust (or re-trust) the certificate, and say clearly what that means.
       $("#cert-msg").textContent = code === "certificate-changed"
         ? "Warning: this server's certificate changed since you last connected. If you reinstalled Frigate or renewed its certificate, that's expected. Otherwise, someone may be intercepting the connection."
