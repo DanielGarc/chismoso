@@ -273,6 +273,8 @@ kbd { font: 11px ui-monospace, Menlo, Consolas, monospace; color: var(--muted); 
 
 .winctl { display: flex; align-self: stretch; }
 body.mac .winctl { display: none; }
+/* no window buttons on the right (macOS, phones): keep the server chip off the edge */
+body.mac .appbar, html.no-window-controls .appbar { padding-right: 14px; }
 .winctl button { width: 46px; border: 0; background: none; color: var(--muted); cursor: pointer; display: grid; place-items: center; }
 .winctl svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.2; }
 .winctl button:hover { background: var(--hover-ghost); color: var(--text); }
