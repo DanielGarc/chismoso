@@ -1,1 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#121823"/><circle cx="16" cy="16" r="11" fill="none" stroke="#3b82f6" stroke-width="3.5"/><circle cx="16" cy="16" r="5" fill="#ef4444"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Chismoso: someone peeking from behind the curtain. Source for every app
+       and site icon (regenerate with dev/make-icons.sh). -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#16203a"/><stop offset="1" stop-color="#0b0f16"/>
+    </linearGradient>
+    <linearGradient id="curtain" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2f6fd6"/><stop offset=".6" stop-color="#3b82f6"/><stop offset="1" stop-color="#60a5fa"/>
+    </linearGradient>
+    <clipPath id="win"><rect x="150" y="160" width="724" height="704" rx="56"/></clipPath>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+  <rect x="150" y="160" width="724" height="704" rx="56" fill="#05070b"/>
+  <g clip-path="url(#win)">
+    <g fill="#f1f5fb">
+      <ellipse cx="566" cy="470" rx="84" ry="62"/>
+      <ellipse cx="752" cy="470" rx="84" ry="62"/>
+    </g>
+    <g fill="#0b0f16"><circle cx="536" cy="478" r="34"/><circle cx="722" cy="478" r="34"/></g>
+    <path d="M100 100 H470 C420 300 400 520 430 720 C442 790 462 850 490 920 H100 Z" fill="url(#curtain)"/>
+    <g stroke="#2a63c2" stroke-width="22" stroke-linecap="round" fill="none">
+      <path d="M260 160 C252 400 258 640 276 864"/>
+      <path d="M360 160 C342 400 344 640 372 864"/>
+    </g>
+  </g>
+  <rect x="150" y="160" width="724" height="704" rx="56" fill="none" stroke="#33435f" stroke-width="40"/>
+  <circle cx="860" cy="170" r="70" fill="#ef4444" stroke="#0e1424" stroke-width="28"/>
+</svg>
