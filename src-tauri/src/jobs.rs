@@ -18,6 +18,8 @@ pub struct JobSpec {
     pub start: i64,
     pub end: i64,
     pub mode: ExportMode,
+    /// Re-encode smaller (720p) for sending to people.
+    pub small: bool,
     pub out_dir: PathBuf,
     pub delete_after_download: bool,
 }
@@ -55,7 +57,7 @@ fn run_inner(client: &Frigate, spec: &JobSpec, report: &mut dyn FnMut(Update)) -
     report(Update::Stage("Queuing export…".into(), 0.0));
     let started = Instant::now();
     let id = loop {
-        match client.start_export(&spec.camera, spec.start, spec.end, &name, spec.mode) {
+        match client.start_export(&spec.camera, spec.start, spec.end, &name, spec.mode, spec.small) {
             Ok(id) => break id,
             Err(e) if format!("{e}").contains("queue is full") && started.elapsed() < Duration::from_secs(1800) => {
                 report(Update::Stage("Frigate's export queue is full, waiting…".into(), 0.0));

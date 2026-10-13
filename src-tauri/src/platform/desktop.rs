@@ -13,6 +13,8 @@ pub const FEATURES: Features = Features {
     keyboard: true,
     background_alerts: true,
     self_update: true,
+    share_sheet: cfg!(any(target_os = "macos", target_os = "windows")),
+    copy_files: true,
 };
 
 /// Before the window exists.
@@ -155,8 +157,9 @@ pub fn open_path(path: &str, reveal: bool, connected: Option<&str>) -> Result<()
             // the output folder may not exist yet
             let _ = std::fs::create_dir_all(&p);
         }
-        let is_mp4 = p.is_file() && p.extension().is_some_and(|e| e.eq_ignore_ascii_case("mp4"));
-        if !p.is_dir() && !is_mp4 {
+        let is_media = p.is_file()
+            && p.extension().and_then(|e| e.to_str()).is_some_and(|e| ["mp4", "jpg", "jpeg", "png"].iter().any(|x| e.eq_ignore_ascii_case(x)));
+        if !p.is_dir() && !is_media {
             return Err(format!("Can't open {}.", p.display()));
         }
         p.into_os_string()
@@ -168,6 +171,212 @@ pub fn open_path(path: &str, reveal: bool, connected: Option<&str>) -> Result<()
     #[cfg(all(unix, not(target_os = "macos")))]
     let r = std::process::Command::new("xdg-open").arg(&target).spawn();
     r.map(|_| ()).map_err(|e| format!("Couldn't open it: {e}"))
+}
+
+// ── sharing ─────────────────────────────────────────────────────────────
+
+/// Opens the system share menu for files (macOS share picker, Windows Share),
+/// pointing at `anchor`. Linux desktops have no common share menu; the UI
+/// hides the button there (`Features::share_sheet`).
+#[cfg(target_os = "macos")]
+pub fn share_files(window: &tauri::WebviewWindow, paths: &[PathBuf], anchor: super::Anchor) -> Result<(), String> {
+    mac_share::share(window, paths, anchor)
+}
+#[cfg(windows)]
+pub fn share_files(window: &tauri::WebviewWindow, paths: &[PathBuf], _anchor: super::Anchor) -> Result<(), String> {
+    win_share::share(window, paths)
+}
+#[cfg(not(any(target_os = "macos", windows)))]
+pub fn share_files(_window: &tauri::WebviewWindow, _paths: &[PathBuf], _anchor: super::Anchor) -> Result<(), String> {
+    Err("This desktop has no share menu. Use Copy, or Show in folder.".into())
+}
+
+/// Puts files on the clipboard as files, so pasting into a chat or an email
+/// attaches them.
+#[cfg(target_os = "macos")]
+pub fn copy_files(paths: &[PathBuf]) -> Result<(), String> {
+    mac_share::copy(paths)
+}
+#[cfg(windows)]
+pub fn copy_files(paths: &[PathBuf]) -> Result<(), String> {
+    win_share::copy(paths)
+}
+#[cfg(not(any(target_os = "macos", windows)))]
+pub fn copy_files(paths: &[PathBuf]) -> Result<(), String> {
+    linux_copy(paths)
+}
+
+#[cfg(not(any(target_os = "macos", windows)))]
+fn linux_copy(paths: &[PathBuf]) -> Result<(), String> {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+    // file:// URIs, one per line: what file managers and chat apps accept.
+    let uri = |p: &PathBuf| {
+        let mut out = String::from("file://");
+        for b in p.to_string_lossy().bytes() {
+            if b.is_ascii_alphanumeric() || b"/-._~".contains(&b) { out.push(b as char) } else { out.push_str(&format!("%{b:02X}")) }
+        }
+        out
+    };
+    let list: String = paths.iter().map(|p| uri(p) + "\r\n").collect();
+    let wayland = std::env::var_os("WAYLAND_DISPLAY").is_some();
+    let tools: &[(&str, &[&str])] = if wayland {
+        &[("wl-copy", &["--type", "text/uri-list"]), ("xclip", &["-selection", "clipboard", "-t", "text/uri-list"])]
+    } else {
+        &[("xclip", &["-selection", "clipboard", "-t", "text/uri-list"]), ("wl-copy", &["--type", "text/uri-list"])]
+    };
+    for (cmd, args) in tools {
+        let Ok(mut child) = Command::new(cmd).args(*args).stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::null()).spawn() else { continue };
+        if let Some(mut stdin) = child.stdin.take() {
+            let _ = stdin.write_all(list.as_bytes());
+        }
+        // both tools keep serving the clipboard in the background; don't wait on that
+        std::thread::spawn(move || { let _ = child.wait(); });
+        return Ok(());
+    }
+    Err(if wayland {
+        "Copying files needs wl-clipboard (sudo apt install wl-clipboard). Use Show in folder instead.".into()
+    } else {
+        "Copying files needs xclip (sudo apt install xclip). Use Show in folder instead.".into()
+    })
+}
+
+#[cfg(target_os = "macos")]
+mod mac_share {
+    use objc2::rc::Retained;
+    use objc2::runtime::{AnyObject, ProtocolObject};
+    use objc2::{AnyThread, MainThreadMarker};
+    use objc2_app_kit::{NSPasteboard, NSPasteboardWriting, NSSharingServicePicker, NSView};
+    use objc2_foundation::{NSArray, NSPoint, NSRect, NSRectEdge, NSSize, NSString, NSURL};
+    use std::path::PathBuf;
+
+    fn urls(paths: &[PathBuf]) -> Vec<Retained<NSURL>> {
+        paths.iter().map(|p| NSURL::fileURLWithPath(&NSString::from_str(&p.to_string_lossy()))).collect()
+    }
+
+    pub fn share(window: &tauri::WebviewWindow, paths: &[PathBuf], a: super::super::Anchor) -> Result<(), String> {
+        let paths = paths.to_vec();
+        window
+            .with_webview(move |wv| {
+                let Some(_mtm) = MainThreadMarker::new() else { return };
+                // The WKWebView: flipped coordinates, so the page's CSS pixels map straight over.
+                let view = unsafe { &*(wv.inner() as *const NSView) };
+                let items: Vec<Retained<AnyObject>> = urls(&paths).into_iter().map(|u| Retained::into_super(Retained::into_super(u))).collect();
+                let items = NSArray::from_retained_slice(&items);
+                // SAFETY: every item is an NSURL, which AppKit can share.
+                let picker = unsafe { NSSharingServicePicker::initWithItems(NSSharingServicePicker::alloc(), &items) };
+                let rect = NSRect::new(NSPoint::new(a.x, a.y), NSSize::new(a.w.max(1.0), a.h.max(1.0)));
+                picker.showRelativeToRect_ofView_preferredEdge(rect, view, NSRectEdge::MaxY);
+                // AppKit keeps showing it after we return; keep our reference alive too.
+                std::mem::forget(picker);
+            })
+            .map_err(|e| e.to_string())
+    }
+
+    pub fn copy(paths: &[PathBuf]) -> Result<(), String> {
+        let items: Vec<Retained<ProtocolObject<dyn NSPasteboardWriting>>> = urls(paths).into_iter().map(ProtocolObject::from_retained).collect();
+        let items = NSArray::from_retained_slice(&items);
+        let pb = NSPasteboard::generalPasteboard();
+        pb.clearContents();
+        if pb.writeObjects(&items) { Ok(()) } else { Err("Couldn't put the files on the clipboard.".into()) }
+    }
+}
+
+#[cfg(windows)]
+mod win_share {
+    use std::cell::RefCell;
+    use std::path::PathBuf;
+    use windows::ApplicationModel::DataTransfer::{DataRequestedEventArgs, DataTransferManager};
+    use windows::Foundation::TypedEventHandler;
+    use windows::Storage::{IStorageItem, StorageFile};
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::Shell::IDataTransferManagerInterop;
+    use windows::core::{HSTRING, Interface, Ref, factory};
+
+    thread_local! {
+        // The handler from the previous share, removed before adding the next.
+        static PREV: RefCell<Option<(DataTransferManager, i64)>> = const { RefCell::new(None) };
+    }
+
+    pub fn share(window: &tauri::WebviewWindow, paths: &[PathBuf]) -> Result<(), String> {
+        let raw = window.hwnd().map_err(|e| e.to_string())?.0 as isize;
+        let paths = paths.to_vec();
+        window
+            .run_on_main_thread(move || {
+                if let Err(e) = show(HWND(raw as *mut _), &paths) {
+                    eprintln!("share failed: {e}");
+                }
+            })
+            .map_err(|e| e.to_string())
+    }
+
+    fn show(hwnd: HWND, paths: &[PathBuf]) -> windows::core::Result<()> {
+        let interop = factory::<DataTransferManager, IDataTransferManagerInterop>()?;
+        let mgr: DataTransferManager = unsafe { interop.GetForWindow(hwnd)? };
+        let paths = paths.to_vec();
+        let title = match paths.as_slice() {
+            [one] => one.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default(),
+            _ => format!("{} files", paths.len()),
+        };
+        PREV.with(|prev| {
+            if let Some((m, token)) = prev.borrow_mut().take() {
+                let _ = m.RemoveDataRequested(token);
+            }
+        });
+        let token = mgr.DataRequested(&TypedEventHandler::new(move |_, args: Ref<DataRequestedEventArgs>| {
+            let args = args.ok()?;
+            let data = args.Request()?.Data()?;
+            data.Properties()?.SetTitle(&HSTRING::from(title.as_str()))?;
+            // WinRT file objects can't cross threads, so they're opened here, on the UI thread.
+            let files: Vec<Option<IStorageItem>> = paths
+                .iter()
+                .map(|p| StorageFile::GetFileFromPathAsync(&HSTRING::from(p.as_os_str()))?.join()?.cast().map(Some))
+                .collect::<windows::core::Result<_>>()?;
+            let list: windows_collections::IIterable<IStorageItem> = files.into();
+            data.SetStorageItemsReadOnly(&list)?;
+            Ok(())
+        }))?;
+        PREV.with(|prev| *prev.borrow_mut() = Some((mgr, token)));
+        unsafe { interop.ShowShareUIForWindow(hwnd) }
+    }
+
+    /// CF_HDROP: the clipboard format Explorer uses for copied files.
+    pub fn copy(paths: &[PathBuf]) -> Result<(), String> {
+        use std::os::windows::ffi::OsStrExt;
+        use windows_sys::Win32::Foundation::{GlobalFree, POINT};
+        use windows_sys::Win32::System::DataExchange::{CloseClipboard, EmptyClipboard, OpenClipboard, SetClipboardData};
+        use windows_sys::Win32::System::Memory::{GMEM_MOVEABLE, GlobalAlloc, GlobalLock, GlobalUnlock};
+        use windows_sys::Win32::UI::Shell::DROPFILES;
+        const CF_HDROP: u32 = 15;
+
+        let mut names: Vec<u16> = Vec::new();
+        for p in paths {
+            names.extend(p.as_os_str().encode_wide());
+            names.push(0);
+        }
+        names.push(0);
+        let header = std::mem::size_of::<DROPFILES>();
+        let bytes = header + names.len() * 2;
+        unsafe {
+            let mem = GlobalAlloc(GMEM_MOVEABLE, bytes);
+            if mem.is_null() {
+                return Err("Couldn't put the files on the clipboard.".into());
+            }
+            let ptr = GlobalLock(mem) as *mut u8;
+            let df = DROPFILES { pFiles: header as u32, pt: POINT { x: 0, y: 0 }, fNC: 0, fWide: 1 };
+            std::ptr::write_unaligned(ptr as *mut DROPFILES, df);
+            std::ptr::copy_nonoverlapping(names.as_ptr() as *const u8, ptr.add(header), names.len() * 2);
+            GlobalUnlock(mem);
+            if OpenClipboard(std::ptr::null_mut()) == 0 {
+                GlobalFree(mem);
+                return Err("The clipboard is busy. Try again.".into());
+            }
+            EmptyClipboard();
+            let ok = !SetClipboardData(CF_HDROP, mem).is_null();
+            CloseClipboard();
+            if ok { Ok(()) } else { GlobalFree(mem); Err("Couldn't put the files on the clipboard.".into()) }
+        }
+    }
 }
 
 pub fn decoding() -> Decoding {

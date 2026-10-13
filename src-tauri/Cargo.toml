@@ -51,7 +51,16 @@ tauri-plugin-notification = "2"
 [target.'cfg(windows)'.dependencies]
 # Windows toasts: registered with the app's own identity (name + icon), not PowerShell's.
 winreg = "0.56"
-windows-sys = { version = "0.61", features = ["Win32_UI_Shell", "Win32_Foundation"] }
+windows-sys = { version = "0.61", features = ["Win32_UI_Shell", "Win32_Foundation", "Win32_System_DataExchange", "Win32_System_Memory"] }
+# Share menu (Windows Share). Tauri already depends on this crate; these add features only.
+windows = { version = "0.62", features = ["ApplicationModel_DataTransfer", "Foundation", "Storage", "Storage_Streams", "Win32_Foundation", "Win32_UI_Shell"] }
+windows-collections = "0.3"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# Share picker and file clipboard. Tauri already depends on these; features only.
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSArray", "NSGeometry", "NSString", "NSURL"] }
+objc2-app-kit = { version = "0.3", features = ["NSPasteboard", "NSSharingService", "NSView", "NSResponder"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 webkit2gtk = { version = "2.0", features = ["v2_40"] }

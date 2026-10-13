@@ -462,3 +462,7 @@ html[data-compact] .update-row .grow { flex-basis: 100%; height: 0; }
 .t-color input[type=color]::-webkit-color-swatch { border: 0; border-radius: 5px; }
 .t-paste { display: flex; flex-direction: column; gap: 8px; }
 .t-paste textarea { width: 100%; font: 12.5px/1.4 ui-monospace, Menlo, Consolas, monospace; }
+
+/* sharing */
+.share-toast { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; max-width: min(640px, calc(100vw - 32px)); }
+.share-acts { display: flex; gap: 12px; flex-wrap: wrap; }

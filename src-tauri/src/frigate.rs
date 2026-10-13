@@ -430,9 +430,27 @@ impl Frigate {
 
     /// Queues an export on the server. Returns the export id when the server
     /// provides one (Frigate 0.14+).
-    pub fn start_export(&self, camera: &str, start: i64, end: i64, name: &str, mode: ExportMode) -> Result<Option<String>> {
+    /// `small`: re-encode to at most 720p with a higher compression, so the file
+    /// is easy to send (needs Frigate 0.17+, which takes custom ffmpeg settings).
+    pub fn start_export(&self, camera: &str, start: i64, end: i64, name: &str, mode: ExportMode, small: bool) -> Result<Option<String>> {
         let cam = enc(camera);
+        // 720p keeps the aspect ratio; CRF 28 is visibly fine on a phone at a fraction of the size.
+        const SMALL: &str = "scale=-2:720";
+        const SMALL_ENC: &str = " -c:v libx264 -preset veryfast -crf 28";
         let raw = match mode {
+            ExportMode::Realtime if small => {
+                let body = json!({
+                    "source": "recordings",
+                    "name": name,
+                    "ffmpeg_input_args": "",
+                    "ffmpeg_output_args": format!("-vf {SMALL}{SMALL_ENC} -c:a aac"),
+                });
+                let raw = self.raw(self.req(Method::POST, &format!("/api/export/custom/{cam}/start/{start}/end/{end}")).json(&body))?;
+                if raw.is_missing_route() {
+                    bail!("Smaller files for sharing need Frigate 0.17 or newer. Untick \"Smaller file for sharing\".");
+                }
+                raw
+            }
             ExportMode::Realtime => self.raw(self.req(Method::POST, &format!("/api/export/{cam}/start/{start}/end/{end}"))
                 .json(&json!({ "source": "recordings", "name": name })))?,
             ExportMode::Timelapse { speed, fps, keyframes_only } => {
@@ -443,11 +461,18 @@ impl Frigate {
                     "source": "recordings",
                     "name": name,
                     "ffmpeg_input_args": input,
-                    "ffmpeg_output_args": format!("-vf setpts={factor:.8}*PTS -r {fps}"),
+                    "ffmpeg_output_args": if small {
+                        format!("-vf setpts={factor:.8}*PTS,{SMALL} -r {fps}{SMALL_ENC}")
+                    } else {
+                        format!("-vf setpts={factor:.8}*PTS -r {fps}")
+                    },
                 });
                 let raw = self.raw(self.req(Method::POST, &format!("/api/export/custom/{cam}/start/{start}/end/{end}")).json(&body))?;
                 if raw.is_missing_route() {
                     // Frigate < 0.17 has no custom export endpoint, only a fixed 25x timelapse.
+                    if small {
+                        bail!("Smaller files for sharing need Frigate 0.17 or newer. Untick \"Smaller file for sharing\".");
+                    }
                     if (speed - 25.0).abs() > 0.5 {
                         bail!("This Frigate version only supports 25x timelapses. Set the speed to 25x.");
                     }
