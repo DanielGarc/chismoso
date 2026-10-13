@@ -110,6 +110,7 @@
           <span class="badge" id="focus-mode">connecting…</span>
           <span class="grow"></span>
           <div class="toggles" id="focus-toggles"></div>
+          <button class="btn ghost" id="focus-snap" title="Save a picture of this camera (the live image, or the moment you're playing)">📷 Snapshot</button>
           <button class="btn ghost" id="focus-mute" title="Toggle sound">🔇 Muted</button>
           <button class="btn ghost" id="focus-full" title="Full screen">⛶ Full screen</button>
         </div>
@@ -230,6 +231,7 @@
               <button class="btn ghost" id="open-out" data-needs="open_files">Open</button>
             </div>
             <span class="muted small" data-needs-not="choose_folder">Exports are saved in this app's Files folder.</span>
+            <label class="check small"><input type="checkbox" id="small-share"> Smaller file for sharing <span class="muted">(720p, much smaller; needs Frigate 0.17+)</span></label>
             <label class="check small"><input type="checkbox" id="delete-after"> Delete the server copy after downloading</label>
           </div>
           <p class="error" id="export-error" hidden></p>
@@ -415,6 +417,7 @@
 </dialog>
 
 <div class="toast" id="toast" hidden></div>
+<div class="toast share-toast" id="share-toast" role="status" hidden><span id="share-toast-text"></span><span class="share-acts" id="share-toast-acts"></span><button class="link" id="share-toast-close" aria-label="Close">✕</button></div>
 
 <script src="platform.js"></script>
 <script src="webrtc.js"></script>

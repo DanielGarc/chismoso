@@ -41,6 +41,10 @@ pub struct Features {
     pub background_alerts: bool,
     /// The app can update itself from GitHub releases (phones use stores).
     pub self_update: bool,
+    /// The system share menu for files (macOS share picker, Windows Share).
+    pub share_sheet: bool,
+    /// Put files on the clipboard, to paste into chats and email.
+    pub copy_files: bool,
 }
 
 /// A newer release, as offered to the user.
@@ -63,4 +67,14 @@ pub struct Decoding {
     pub detail: String,
     /// What to install or change, if anything.
     pub hint: Option<String>,
+}
+
+/// Where the share menu should point from: the button's rectangle in the
+/// page, in CSS pixels (x, y from the top-left, width, height).
+#[derive(serde::Deserialize, Clone, Copy, Debug, Default)]
+pub struct Anchor {
+    pub x: f64,
+    pub y: f64,
+    pub w: f64,
+    pub h: f64,
 }

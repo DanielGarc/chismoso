@@ -158,7 +158,7 @@ fn run_inner(argv: Vec<String>) -> anyhow::Result<i32> {
     let handles: Vec<_> = selected
         .into_iter()
         .map(|camera| {
-            let spec = JobSpec { camera: camera.clone(), start, end, mode, out_dir: out_dir.clone(), delete_after_download: a.delete_after };
+            let spec = JobSpec { camera: camera.clone(), start, end, mode, small: false, out_dir: out_dir.clone(), delete_after_download: a.delete_after };
             let (client, failures) = (client.clone(), failures.clone());
             std::thread::spawn(move || {
                 let mut last = String::new();

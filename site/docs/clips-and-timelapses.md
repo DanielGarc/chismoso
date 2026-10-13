@@ -54,6 +54,18 @@ record:
 
 The **Progress** list shows each camera's job: queued, rendering (with a percentage, the elapsed time and an estimate of the time left), downloading, and saved. If Frigate's queue is full, the job waits and says so. **Clear finished** tidies the list.
 
+## Sharing
+
+When a clip or timelapse is saved, its row in **Progress** has:
+
+- **Share…** opens your computer's share menu: Mail, Messages, AirDrop and more on a Mac; the Windows **Share** panel (email, nearby sharing, and apps like WhatsApp) on Windows. Linux desktops don't have a common share menu, so it isn't shown there.
+- **Copy** puts the file on the clipboard. Paste it into a chat, an email or a folder and it attaches like any file. On Linux this needs `wl-clipboard` (Wayland) or `xclip` (X11).
+- **Play** and **Show in folder**.
+
+**Smaller file for sharing** (under **Save to**) makes Frigate render the video at 720p with stronger compression: usually a fraction of the size, which matters for chat apps with upload limits, and still looks fine on a phone. It needs Frigate 0.17 or newer, and it works for timeline clips too.
+
+Pictures work the same way: see [Snapshots](camera-view.md#snapshots).
+
 ## Where files go
 
 Downloads go to the **Save to** folder. By default that's a **Chismoso Exports** folder in your Videos folder (or Downloads, or your home folder, if there's no Videos folder). Use **Open** to show it in your file manager.

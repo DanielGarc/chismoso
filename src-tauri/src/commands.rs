@@ -378,6 +378,8 @@ pub(crate) struct ExportRequest {
     speed: f32,
     fps: u32,
     keyframes_only: bool,
+    #[serde(default)]
+    small: bool,
     out_dir: String,
     delete_after: bool,
 }
@@ -420,6 +422,7 @@ pub(crate) fn start_exports(app: AppHandle, state: State<'_, AppState>, req: Exp
                 start: req.start,
                 end: req.end,
                 mode,
+                small: req.small,
                 out_dir: PathBuf::from(req.out_dir.trim()),
                 delete_after_download: req.delete_after,
             };
@@ -534,3 +537,81 @@ pub(crate) fn media_base(state: State<'_, AppState>) -> String {
     state.media_base.lock().unwrap().clone()
 }
 
+
+// ── sharing ─────────────────────────────────────────────────────────────
+
+/// Only finished videos and pictures the app made can be shared or copied.
+fn shareable(paths: Vec<String>) -> CmdResult<Vec<PathBuf>> {
+    if paths.is_empty() || paths.len() > 20 {
+        return Err("Pick between 1 and 20 files.".into());
+    }
+    paths
+        .into_iter()
+        .map(|p| {
+            let p = PathBuf::from(p);
+            let ext = p.extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase();
+            if p.is_file() && matches!(ext.as_str(), "mp4" | "jpg" | "jpeg" | "png") {
+                Ok(p)
+            } else {
+                Err(format!("Can't share {}: the file isn't there any more.", p.display()))
+            }
+        })
+        .collect()
+}
+
+/// The system share menu (macOS, Windows), pointing at the button that opened it.
+#[tauri::command]
+pub(crate) fn share_files(window: tauri::WebviewWindow, paths: Vec<String>, anchor: platform::Anchor) -> CmdResult<()> {
+    platform::share_files(&window, &shareable(paths)?, anchor)
+}
+
+/// Files on the clipboard, ready to paste into a chat or an email.
+#[tauri::command]
+pub(crate) async fn copy_files(paths: Vec<String>) -> CmdResult<()> {
+    let paths = shareable(paths)?;
+    blocking(move || platform::copy_files(&paths).map_err(anyhow::Error::msg)).await
+}
+
+/// Saves a full-size picture from a camera to the exports folder: the live
+/// image, or the recording at `at` (seconds since 1970) when playing back.
+/// Returns the file's path.
+#[tauri::command]
+pub(crate) async fn save_snapshot(state: State<'_, AppState>, camera: String, at: Option<f64>, out_dir: String) -> CmdResult<String> {
+    if camera.contains('/') || camera.is_empty() {
+        return Err("Bad camera name.".into());
+    }
+    let c = client(&state)?;
+    blocking(move || {
+        use std::io::Read;
+        let cam = crate::frigate::enc(&camera);
+        let path = match at {
+            Some(t) => format!("/api/{cam}/recordings/{t:.3}/snapshot.jpg"),
+            None => format!("/api/{cam}/latest.jpg?quality=95"),
+        };
+        let mut resp = c.get_quick(&path, 20)?;
+        if !resp.status().is_success() {
+            anyhow::bail!("Frigate couldn't make a picture from {camera} ({}).", resp.status());
+        }
+        let mut bytes = Vec::new();
+        resp.read_to_end(&mut bytes)?;
+        let dir = PathBuf::from(out_dir.trim());
+        std::fs::create_dir_all(&dir)?;
+        let when = stamp(at);
+        let mut file = dir.join(format!("{camera} {when}.jpg"));
+        let mut n = 2;
+        while file.exists() {
+            file = dir.join(format!("{camera} {when} ({n}).jpg"));
+            n += 1;
+        }
+        std::fs::write(&file, bytes)?;
+        Ok(file.to_string_lossy().into_owned())
+    })
+    .await
+}
+
+/// "2026-10-12 21-30-05" in local time (file-name safe).
+fn stamp(at: Option<f64>) -> String {
+    use chrono::{Local, TimeZone};
+    let t = at.and_then(|t| Local.timestamp_opt(t as i64, 0).single()).unwrap_or_else(Local::now);
+    t.format("%Y-%m-%d %H-%M-%S").to_string()
+}

@@ -24,7 +24,7 @@ const media = (path) => MEDIA + path;
 const prefs = Object.assign({
   url: "https://frigate.local:8971", user: "admin", selfSigned: false, pins: {}, keep: false,
   cols: 0, gridLive: false, outDir: "", mode: "timelapse", speed: 60, fps: 30,
-  deleteAfter: false, selected: [], layout: "all", layouts: [],
+  deleteAfter: false, smallShare: false, selected: [], layout: "all", layouts: [],
 }, JSON.parse(localStorage.getItem("prefs") || "{}"));
 if ("insecure" in prefs) { prefs.selfSigned = !!prefs.insecure; delete prefs.insecure; } // older versions
 const savePrefs = () => localStorage.setItem("prefs", JSON.stringify(prefs));
@@ -954,7 +954,7 @@ $("#sel-clip").addEventListener("click", async () => {
   try {
     const ids = await call("start_exports", { req: {
       cameras: cams, start: Math.floor(s.a), end: Math.ceil(s.b), realtime: true, speed: 1, fps: 30,
-      keyframes_only: false, out_dir: prefs.outDir, delete_after: prefs.deleteAfter,
+      keyframes_only: false, small: prefs.smallShare, out_dir: prefs.outDir, delete_after: prefs.deleteAfter,
     } });
     const label = names.length > 1 ? `${names.length} cameras` : names[0];
     const byCam = new Map(cams.map((n, i) => [n, names[i]]));
@@ -1208,6 +1208,7 @@ function setupExportsForm() {
   $("#fps").value = prefs.fps;
   $("#out-dir").value = prefs.outDir;
   $("#delete-after").checked = prefs.deleteAfter;
+  $("#small-share").checked = prefs.smallShare;
   setMode(prefs.mode);
 }
 
@@ -1229,6 +1230,7 @@ $$("#render button").forEach((b) => b.addEventListener("click", () => { prefs.re
 $("#fps").addEventListener("change", () => { prefs.fps = Math.min(60, Math.max(10, +$("#fps").value || 30)); $("#fps").value = prefs.fps; savePrefs(); });
 $("#out-dir").addEventListener("change", () => { prefs.outDir = $("#out-dir").value.trim(); savePrefs(); });
 $("#delete-after").addEventListener("change", (e) => { prefs.deleteAfter = e.target.checked; savePrefs(); });
+$("#small-share").addEventListener("change", (e) => { prefs.smallShare = e.target.checked; savePrefs(); });
 $("#open-out").addEventListener("click", () => invoke("open_path", { path: $("#out-dir").value.trim(), reveal: false }).catch((e) => toast(errText(e), true)));
 
 function setMode(mode) {
@@ -1299,7 +1301,7 @@ $("#go").addEventListener("click", async () => {
   const req = {
     cameras: prefs.selected, start: Math.floor(r.a / 1000), end: Math.floor(r.b / 1000),
     realtime: prefs.mode === "realtime", speed, fps: prefs.fps,
-    keyframes_only: prefs.render === "fast",
+    keyframes_only: prefs.render === "fast", small: prefs.smallShare,
     out_dir: prefs.outDir, delete_after: prefs.deleteAfter,
   };
   const go = $("#go");
@@ -1383,9 +1385,7 @@ function applyJobEvent(j) {
     $(".stage-txt", el).title = j.path;
     $(".bar", el).hidden = true;
     const acts = $(".job-actions", el);
-    acts.replaceChildren(...(Platform.has("open_files") ? [
-      h("button", { class: "link", onclick: () => invoke("open_path", { path: j.path, reveal: false }) }, "Play"),
-      h("button", { class: "link", onclick: () => invoke("open_path", { path: j.path, reveal: true }) }, "Show in folder")] : []));
+    acts.replaceChildren(...fileActions(j.path, "Play"));
     acts.hidden = !acts.children.length;
     if (state.view === "exports") refreshExports();
   }
@@ -1861,6 +1861,55 @@ $("#about-copy").addEventListener("click", async () => {
   catch (_) { toast("Couldn't reach the clipboard; select the text instead.", true); }
 });
 window.addEventListener("beforeunload", () => closeMinute());
+
+// ══ Sharing ═════════════════════════════════════════════════════════
+// Finished clips, timelapses and snapshots: the system share menu (macOS,
+// Windows), Copy (paste the file into a chat or an email), open, show in folder.
+async function shareFile(path, btn) {
+  const r = btn.getBoundingClientRect();
+  try { await invoke("share_files", { paths: [path], anchor: { x: r.left, y: r.top, w: r.width, h: r.height } }); }
+  catch (e) { toast(errText(e), true); }
+}
+async function copyFile(path) {
+  try { await invoke("copy_files", { paths: [path] }); toast("Copied. Paste it into a chat or an email."); }
+  catch (e) { toast(errText(e), true, 7000); }
+}
+function fileActions(path, openLabel = "Open") {
+  const b = (label, fn, title) => {
+    const el = h("button", { class: "link", title: title || "" }, label);
+    el.addEventListener("click", () => fn(el));
+    return el;
+  };
+  return [
+    Platform.has("share_sheet") && b("Share…", (el) => shareFile(path, el), "Send with Mail, Messages, AirDrop, WhatsApp…"),
+    Platform.has("copy_files") && b("Copy", () => copyFile(path), "Copy the file, then paste it into a chat or an email"),
+    Platform.has("open_files") && b(openLabel, () => invoke("open_path", { path, reveal: false }).catch((e) => toast(errText(e), true))),
+    Platform.has("open_files") && b("Show in folder", () => invoke("open_path", { path, reveal: true }).catch((e) => toast(errText(e), true))),
+  ].filter(Boolean);
+}
+// A toast that stays until dismissed, with the file's actions.
+function shareToast(text, path) {
+  $("#share-toast-text").textContent = text;
+  $("#share-toast-acts").replaceChildren(...fileActions(path));
+  $("#share-toast").hidden = false;
+  clearTimeout(shareToast._t);
+  shareToast._t = setTimeout(() => { $("#share-toast").hidden = true; }, 20000);
+}
+$("#share-toast-close").addEventListener("click", () => { $("#share-toast").hidden = true; });
+
+$("#focus-snap").addEventListener("click", async () => {
+  const f = state.focus;
+  if (!f) return;
+  const btn = $("#focus-snap");
+  btn.disabled = true;
+  try {
+    if (!prefs.outDir) { prefs.outDir = await invoke("default_output_dir"); savePrefs(); }
+    const at = f.mode === "rec" ? playheadTime() : null;
+    const path = await call("save_snapshot", { camera: f.cam, at, outDir: prefs.outDir });
+    shareToast(`Saved ${path.split(/[\\/]/).pop()}`, path);
+  } catch (e) { toast(errText(e), true); }
+  finally { btn.disabled = false; }
+});
 
 // ══ Appearance (themes) ═════════════════════════════════════════════
 // theme.js applies the saved theme before the page draws; this is just the

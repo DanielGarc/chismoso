@@ -19,6 +19,8 @@ pub const FEATURES: Features = Features {
     keyboard: false,
     background_alerts: false,
     self_update: false,
+    share_sheet: false,
+    copy_files: false,
 };
 
 pub fn init() {}
@@ -76,4 +78,12 @@ pub async fn install_update(_app: &AppHandle, _progress: impl Fn(f64) + Send + '
 
 pub fn decoding() -> Decoding {
     Decoding { hardware: Some(true), detail: "Phones and tablets decode video in hardware".into(), hint: None }
+}
+
+pub fn share_files(_window: &tauri::WebviewWindow, _paths: &[std::path::PathBuf], _anchor: super::Anchor) -> Result<(), String> {
+    Err("Sharing isn't available in the phone app yet.".into())
+}
+
+pub fn copy_files(_paths: &[std::path::PathBuf]) -> Result<(), String> {
+    Err("Copying files isn't available in the phone app yet.".into())
 }

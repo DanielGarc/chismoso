@@ -41,6 +41,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::connect,
             commands::resume,
+            commands::share_files,
+            commands::copy_files,
+            commands::save_snapshot,
             commands::disconnect,
             commands::cameras,
             commands::webrtc_answer,
