@@ -44,6 +44,7 @@ pub fn run() {
             commands::share_files,
             commands::copy_files,
             commands::save_snapshot,
+            commands::local_export,
             commands::disconnect,
             commands::cameras,
             commands::webrtc_answer,

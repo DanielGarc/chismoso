@@ -466,3 +466,4 @@ html[data-compact] .update-row .grow { flex-basis: 100%; height: 0; }
 /* sharing */
 .share-toast { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; max-width: min(640px, calc(100vw - 32px)); }
 .share-acts { display: flex; gap: 12px; flex-wrap: wrap; }
+.btn-ic { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; vertical-align: -3px; margin-right: 6px; }

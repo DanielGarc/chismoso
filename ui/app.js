@@ -1353,7 +1353,12 @@ function addBatch(title, rows) {
 // Standalone download from the server list: a one-row batch.
 function addJob(id, title) { addBatch(title, [[id, "Download"]]); }
 
-listen("job", ({ payload: j }) => applyJobEvent(j));
+listen("job", ({ payload: j }) => {
+  applyJobEvent(j);
+  // something waiting for this download (Share on a server export)
+  const after = state.afterJob?.get(j.id);
+  if (after && (j.state === "done" || j.state === "failed")) { state.afterJob.delete(j.id); after(j); }
+});
 
 function applyJobEvent(j) {
   const job = state.jobs.get(j.id);
@@ -1453,10 +1458,12 @@ function exportCard(x) {
   if (!x.in_progress) thumb.addEventListener("click", () => playExport(x.name || file, "/exports/" + encodeURIComponent(file)));
   const card = h("div", { class: "export" },
     thumb,
-    h("div", { class: "meta" }, h("strong", { title: x.name }, x.name || file), h("span", {}, `${cam?.friendly_name || x.camera} · ${when}`)),
+    h("div", { class: "meta" }, h("strong", { title: x.name }, x.name || file),
+      h("span", {}, [cam?.friendly_name || x.camera, when, x.size ? fmtBytes(x.size) : ""].filter(Boolean).join(" · "))),
     h("div", { class: "acts" },
       x.in_progress ? h("span", { class: "muted" }, "Rendering…") : [
         h("button", { class: "link", onclick: () => downloadExport(x) }, "Download"),
+        h("button", { class: "link", title: "Download it if needed, then send it", onclick: (ev) => shareExport(x, ev.currentTarget) }, "Share…"),
         h("button", { class: "link danger", onclick: () => deleteExport(x, card) }, "Delete"),
       ]));
   return card;
@@ -1469,6 +1476,29 @@ function playExport(title, path) {
 }
 $("#player-close").addEventListener("click", () => $("#player").close());
 $("#player").addEventListener("close", () => { const v = $("#player-video"); v.pause(); v.removeAttribute("src"); v.load(); });
+
+const fmtBytes = (n) => n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : n >= 1e6 ? `${(n / 1e6).toFixed(n >= 1e8 ? 0 : 1)} MB` : `${Math.max(1, Math.round(n / 1e3))} KB`;
+
+// Share a clip that's still only on the server: use the copy already
+// downloaded if there is one, otherwise download it first; then offer the
+// share actions (the share menu has to open from a click, so it's a second click).
+async function shareExport(x, btn) {
+  const name = x.name || x.video_path.split("/").pop();
+  const outDir = $("#out-dir").value.trim() || prefs.outDir;
+  const local = await invoke("local_export", { videoPath: x.video_path, outDir, size: x.size ?? null }).catch(() => null);
+  if (local) { shareToast(`Ready to share: ${name}`, local); return; }
+  btn.disabled = true;
+  try {
+    const id = await call("download_export", { videoPath: x.video_path, outDir });
+    addJob(id, "Download · " + name);
+    (state.afterJob ||= new Map()).set(id, (j) => {
+      btn.disabled = false;
+      if (j.state === "done") shareToast(`Ready to share: ${name}`, j.path);
+      else toast(`Couldn't download ${name}: ${j.error}`, true);
+    });
+    toast(`Downloading ${name} to share it…`);
+  } catch (e) { btn.disabled = false; toast(errText(e), true); }
+}
 
 async function downloadExport(x) {
   try {

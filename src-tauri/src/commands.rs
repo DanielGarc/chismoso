@@ -360,7 +360,36 @@ pub(crate) async fn restart_frigate(state: State<'_, AppState>) -> CmdResult<()>
 #[tauri::command]
 pub(crate) async fn list_exports(state: State<'_, AppState>) -> CmdResult<Vec<ExportInfo>> {
     let c = client(&state)?;
-    blocking(move || c.list_exports()).await
+    blocking(move || {
+        let mut list = c.list_exports()?;
+        // Sizes: one small HEAD request per finished export, a few at a time.
+        for chunk in list.chunks_mut(6) {
+            std::thread::scope(|s| {
+                for x in chunk.iter_mut().filter(|x| !x.in_progress) {
+                    let c = &c;
+                    s.spawn(move || x.size = c.export_size(&x.video_path));
+                }
+            });
+        }
+        Ok(list)
+    })
+    .await
+}
+
+/// Where `download_export` saves this export, if it's already there (same
+/// size as on the server when that's known), so sharing can skip the download.
+#[tauri::command]
+pub(crate) fn local_export(video_path: String, out_dir: String, size: Option<u64>) -> Option<String> {
+    let path = PathBuf::from(out_dir.trim()).join(format!("{}.mp4", export_stem(&video_path)));
+    let len = std::fs::metadata(&path).ok().filter(|m| m.is_file())?.len();
+    (size.is_none_or(|s| s == len)).then(|| path.to_string_lossy().into_owned())
+}
+
+/// Never trust the server's file name: strip any path, keep it plain.
+fn export_stem(video_path: &str) -> String {
+    let stem = video_path.rsplit(['/', '\\']).next().unwrap_or("export");
+    let stem = jobs::sanitize(stem.trim_end_matches(".mp4"));
+    if stem.is_empty() { "export".into() } else { stem }
 }
 
 #[tauri::command]
@@ -446,10 +475,7 @@ pub(crate) fn download_export(app: AppHandle, state: State<'_, AppState>, video_
     let c = client(&state)?;
     let id = state.next_job.fetch_add(1, Ordering::Relaxed);
     std::thread::spawn(move || {
-        // Never trust the server's file name: strip any path, keep it plain, force .mp4.
-        let stem = video_path.rsplit(['/', '\\']).next().unwrap_or("export");
-        let stem = jobs::sanitize(stem.trim_end_matches(".mp4"));
-        let dest = jobs::unique_path(&PathBuf::from(out_dir.trim()), if stem.is_empty() { "export" } else { &stem }, "mp4");
+        let dest = jobs::unique_path(&PathBuf::from(out_dir.trim()), &export_stem(&video_path), "mp4");
         let mut last = std::time::Instant::now();
         let r = c.download(&video_path, &dest, |done, total| {
             if last.elapsed().as_millis() > 150 {

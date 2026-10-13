@@ -64,6 +64,8 @@ When a clip or timelapse is saved, its row in **Progress** has:
 
 **Smaller file for sharing** (under **Save to**) makes Frigate render the video at 720p with stronger compression: usually a fraction of the size, which matters for chat apps with upload limits, and still looks fine on a phone. It needs Frigate 0.17 or newer, and it works for timeline clips too.
 
+Clips listed under **On the server** have **Share…** too: Chismoso downloads the clip to your **Save to** folder first (or uses the copy that's already there), then offers the same choices. Each card also shows the file's size on the server, handy before downloading a long timelapse.
+
 Pictures work the same way: see [Snapshots](camera-view.md#snapshots).
 
 ## Where files go

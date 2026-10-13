@@ -76,6 +76,8 @@ pub struct ExportInfo {
     pub video_path: String,
     pub thumb_path: String,
     pub in_progress: bool,
+    /// File size on the server, when it could be read (filled by `list_exports`).
+    pub size: Option<u64>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -547,11 +549,25 @@ impl Frigate {
     }
 
     /// Downloads a finished export to `dest`, calling `progress(downloaded, total)`.
-    pub fn download(&self, video_path: &str, dest: &Path, mut progress: impl FnMut(u64, Option<u64>)) -> Result<PathBuf> {
+    /// Where Frigate serves an export's video file.
+    fn export_url_path(video_path: &str) -> String {
         let rel = video_path
             .strip_prefix("/media/frigate/exports/")
             .unwrap_or_else(|| video_path.rsplit('/').next().unwrap_or(video_path));
-        let url_path = format!("/exports/{}", rel.split('/').map(enc).collect::<Vec<_>>().join("/"));
+        format!("/exports/{}", rel.split('/').map(enc).collect::<Vec<_>>().join("/"))
+    }
+
+    /// Size of an export's video on the server (a HEAD request; None if unknown).
+    pub fn export_size(&self, video_path: &str) -> Option<u64> {
+        let resp = self.req(Method::HEAD, &Self::export_url_path(video_path)).timeout(Duration::from_secs(5)).send().ok()?;
+        if !resp.status().is_success() {
+            return None;
+        }
+        resp.headers().get(reqwest::header::CONTENT_LENGTH)?.to_str().ok()?.parse().ok()
+    }
+
+    pub fn download(&self, video_path: &str, dest: &Path, mut progress: impl FnMut(u64, Option<u64>)) -> Result<PathBuf> {
+        let url_path = Self::export_url_path(video_path);
 
         metrics::media_request();
         let mut resp = self
@@ -645,6 +661,7 @@ fn parse_export(v: &Value) -> Option<ExportInfo> {
         video_path: v["video_path"].as_str().unwrap_or_default().to_string(),
         thumb_path: v["thumb_path"].as_str().unwrap_or_default().to_string(),
         in_progress: v["in_progress"].as_bool().unwrap_or(false),
+        size: None,
     })
 }
 

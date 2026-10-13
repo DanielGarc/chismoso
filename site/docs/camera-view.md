@@ -15,7 +15,7 @@ Click any tile in the grid to open that camera on its own. The bar above the pic
 | **Stream picker** | Choose between the camera's live streams, if it has more than one |
 | **Badge** | How you're watching: `Live · WebRTC`, `Live · MSE`, `Snapshots · 1 fps`, or a recording |
 | **Detect / Record / Snapshots** | Turn those Frigate features on or off for this camera |
-| **📷 Snapshot** | Save a full-size picture; see [Snapshots](#snapshots) |
+| **Snapshot** | Save a full-size picture; see [Snapshots](#snapshots) |
 | **Muted** | Turn the camera's sound on or off |
 | **Full screen** | Fill the screen with the picture |
 
@@ -36,7 +36,7 @@ The same switches for every camera are on the [Settings](settings.md#camera-swit
 
 ## Snapshots
 
-**📷 Snapshot** saves a full-size picture from this camera to your exports folder: the live image, or, while you're playing a recording, the moment on screen. A note pops up with **Share…**, **Copy**, **Open** and **Show in folder**, so you can send it straight away (see [Sharing](clips-and-timelapses.md#sharing)). Files are named after the camera and the time, like `garage 2026-10-12 21-30-05.jpg`.
+**Snapshot** saves a full-size picture from this camera to your exports folder: the live image, or, while you're playing a recording, the moment on screen. A note pops up with **Share…**, **Copy**, **Open** and **Show in folder**, so you can send it straight away (see [Sharing](clips-and-timelapses.md#sharing)). Files are named after the camera and the time, like `garage 2026-10-12 21-30-05.jpg`.
 
 ## Sound
 
