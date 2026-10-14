@@ -54,6 +54,10 @@ a live alert; `GET /debug/requests` lists what the app asked for.
   "Bump version and release" (`.github/workflows/bump.yml` →
   `release.yml`): builds every desktop platform, signs updater artifacts,
   publishes the release; installed copies offer the update.
+- To test before releasing: Actions → "Dev build" (`.github/workflows/dev.yml`).
+  It builds every platform as a pre-release under the rolling `dev` tag, with
+  version `<next patch>-<run number>` set only inside the build. Installed
+  copies and the website never see it.
 - The website and docs are in `site/` (Markdown in `site/docs/`, built by
   `site/build.mjs`, deployed by `pages.yml`). When a feature changes, update
   its docs page in the same commit.

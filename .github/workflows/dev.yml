@@ -1,0 +1,127 @@
+# Dev build: every platform, published as a GitHub *pre-release* under the
+# rolling tag "dev", for testing before a real release.
+#
+# Actions → "Dev build" → Run workflow.
+#
+# - Nothing is committed: the version is set only inside the build, as the
+#   next patch version with a build number (e.g. 0.6.3-12). Numbers only,
+#   because Windows installers (MSI) refuse letters in versions.
+# - Pre-releases aren't "latest" on GitHub, so installed copies, the website
+#   and the download buttons never see dev builds.
+# - A dev build updates itself to the next real release like any copy
+#   (0.6.3-12 is older than 0.6.3).
+# - Each run replaces the previous dev build.
+name: Dev build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dev-build
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      id: ${{ steps.release.outputs.id }}
+      version: ${{ steps.version.outputs.version }}
+      notes: ${{ steps.notes.outputs.notes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: version
+        run: |
+          v=$(grep -m1 '^version' src-tauri/Cargo.toml | cut -d'"' -f2)
+          base=${v%%-*}
+          IFS=. read -r major minor patch <<< "$base"
+          echo "version=$major.$minor.$((patch + 1))-${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+      - id: notes
+        run: |
+          prev=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
+          range=${prev:+$prev..}HEAD
+          lines=$(git log "$range" --no-merges --format='- %s' \
+            | grep -viE '^- (release|website|site|ci|docs?|readme|launch|add (a real screenshot|promo))\b' || true)
+          [ -n "$lines" ] || lines="- No app changes since ${prev:-the last release}."
+          { echo 'notes<<CHISMOSO_EOF'; echo "$lines"; echo 'CHISMOSO_EOF'; } >> "$GITHUB_OUTPUT"
+      - id: release
+        uses: actions/github-script@v7
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          NOTES: ${{ steps.notes.outputs.notes }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            // Replace the previous dev build (release and its tag).
+            const old = (await github.paginate(github.rest.repos.listReleases, { owner, repo, per_page: 100 }))
+              .filter(r => r.tag_name === 'dev');
+            for (const r of old) await github.rest.repos.deleteRelease({ owner, repo, release_id: r.id });
+            try { await github.rest.git.deleteRef({ owner, repo, ref: 'tags/dev' }); } catch (_) { /* first run */ }
+            const sha = context.sha.slice(0, 8);
+            const body = `**Development build ${process.env.VERSION}** from \`${sha}\`, for testing. ` +
+              `Not offered to installed copies; it updates itself to the next real release.\n\n` +
+              `## Changes since the last release\n\n${process.env.NOTES}`;
+            const rel = (await github.rest.repos.createRelease({
+              owner, repo, tag_name: 'dev', target_commitish: context.sha,
+              name: `Dev build ${process.env.VERSION}`, body, prerelease: true, make_latest: 'false',
+            })).data;
+            core.setOutput('id', rel.id);
+
+  build:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            args: ""
+          - platform: macos-latest
+            args: "--target aarch64-apple-darwin"
+          - platform: macos-latest
+            args: "--target x86_64-apple-darwin"
+          - platform: ubuntu-22.04
+            args: ""
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set the dev version (this build only)
+        shell: bash
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          perl -0pi -e 's/^version = "[^"]*"/version = "$ENV{VERSION}"/m' src-tauri/Cargo.toml
+          grep -m1 '^version' src-tauri/Cargo.toml
+
+      - name: Linux build dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tauriScript: npx --yes @tauri-apps/cli@2
+          releaseId: ${{ needs.prepare.outputs.id }}
+          includeUpdaterJson: false
+          args: ${{ matrix.args }}
