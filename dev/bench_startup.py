@@ -87,6 +87,8 @@ def steps(r):
         # cameras without live video (the mock's PTZ camera) stay on pictures
         out["all_live"] = max(vids) if vids else None
         out["videos"] = len(vids)
+    if "back_to_grid_live" in m:
+        out["back_to_grid_live"] = m["back_to_grid_live"]
     return out
 
 
@@ -134,6 +136,8 @@ def main():
     ap.add_argument("--json", help="also write every run here")
     ap.add_argument("--warm", action="store_true",
                     help="reopen the app with the same data each run (it remembers the cameras); first run not counted")
+    ap.add_argument("--focus-back", action="store_true",
+                    help="with --live: then open one camera and go back; times until the grid plays again")
     ap.add_argument("--scenarios", action="store_true", help="check remembered-camera edge cases instead of timing")
     a = ap.parse_args()
 
@@ -145,7 +149,7 @@ def main():
         tok = token(a.port)
         if a.scenarios:
             scenarios(a.binary, a.port, tok)
-        prefs = {"gridLive": a.live, "keep": True}
+        prefs = {"gridLive": a.live, "keep": True, **({"_then": "focus_back"} if a.focus_back else {})}
         runs = []
         data = Path(tempfile.mkdtemp(prefix="chismoso-bench-warm-")) if a.warm else None
         if data:

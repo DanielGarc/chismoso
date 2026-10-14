@@ -43,7 +43,24 @@ const Timing = {
     const pic = names.every((n) => `img:${n}` in this.t || `vid:${n}` in this.t);
     if (pic) this.mark("all_pictures");
     const live = !(prefs.gridLive && Live.supported()) || names.every((n) => `vid:${n}` in this.t || `novid:${n}` in this.t);
-    if (pic && live && "overview" in this.t) this.send(); // after the server's answer, which may change the grid
+    if (this.busy || !(pic && live && "overview" in this.t)) return; // after the server's answer, which may change the grid
+    if (this.then === "focus_back") return this.focusBack();
+    this.send();
+  },
+  // Benchmark step: open the first camera, come back, and time until every
+  // tile plays again (streams kept warm should make that immediate).
+  async focusBack() {
+    this.then = null; this.busy = true;
+    const first = [...state.tiles.keys()][0];
+    await openFocus(first);
+    await new Promise((r) => setTimeout(r, 1500));
+    const t0 = performance.now();
+    closeFocus(false);
+    const playing = () => [...state.tiles].every(([n, t]) => (t.rtc && !t.video.hidden) || `novid:${n}` in this.t);
+    while (!playing() && performance.now() - t0 < 15000) await new Promise((r) => setTimeout(r, 20));
+    this.t.back_to_grid_live = Math.round(performance.now() - t0);
+    this.busy = false;
+    this.send();
   },
   send() {
     if (this.sent) return;
@@ -244,6 +261,7 @@ invoke("bench_prefs").catch(() => null).then((p) => {
   if (p) {
     for (const [k, v] of Object.entries(p._storage || {})) store.set(k, v);
     delete p._storage;
+    Timing.then = p._then; delete p._then;
     Object.assign(prefs, p);
   }
   resumeSession();
@@ -325,7 +343,7 @@ function showView(v) {
   for (const id of ["live", "exports", "load", "settings"]) $("#view-" + id).hidden = id !== v;
   $("#live-tools").hidden = v !== "live" || !!state.focus;
   if (v === "live") { if (!state.focus) startGrid(); }
-  else { endGridRec(); stopGrid(); closeFocus(true); }
+  else { endGridRec(); closeFocus(true); parkGrid(); }
   if (v === "exports") refreshExports();
   clearInterval(state.loadTimer);
   if (v === "settings") loadSettings();
@@ -508,7 +526,9 @@ const tileObserver = new IntersectionObserver((entries) => {
     if (!entry) continue;
     const [name, t] = entry;
     t.visible = e.isIntersecting;
-    if (!t.visible && t.rtc && !state.focus) { t.ctrl?.abort(); t.ctrl = null; t.rtc.close(); t.rtc = null; t.video.hidden = true; t.img.hidden = false; }
+    // Scrolled out of sight closes a stream; the whole grid being hidden
+    // (a camera full size, another tab) doesn't: see parkGrid().
+    if (!t.visible && t.rtc && !state.focus && state.view === "live" && !$("#grid").hidden) { t.ctrl?.abort(); t.ctrl = null; t.rtc.close(); t.rtc = null; t.video.hidden = true; t.img.hidden = false; }
     else if (t.visible && !state.focus && !state.gridRec && state.view === "live" && prefs.gridLive && Live.supported() && !sleptLive) startTileVideo(name, t);
   }
 }, { root: $("#grid"), threshold: 0.05 });
@@ -559,6 +579,7 @@ $("#grid-live").addEventListener("change", (e) => { prefs.gridLive = e.target.ch
 // Safe to call repeatedly (tab clicks, shortcuts): already-running tiles are left alone.
 function startGrid() {
   if (!state.info || state.focus || state.view !== "live" || state.gridRec) return;
+  clearTimeout(state.parkTimer); // back from a camera or another tab: streams kept are reused
   getTimeline();
   startTicker();
   if (prefs.gridLive && Live.supported()) {
@@ -571,9 +592,21 @@ function startGrid() {
   state.fpsTimer = setInterval(measureTiles, 2000);
 }
 
+// Leaving the grid for a moment (one camera full size, another tab) keeps the
+// grid's streams connected, so coming back is instant instead of reconnecting
+// every camera. After WARM_MS away they close, like stopGrid().
+const WARM_MS = 120e3;
+function parkGrid() {
+  clearInterval(state.snapTimer);
+  clearInterval(state.fpsTimer);
+  clearTimeout(state.parkTimer);
+  if ([...state.tiles.values()].some((t) => t.rtc || t.ctrl)) state.parkTimer = setTimeout(stopGrid, WARM_MS);
+}
+
 function stopGrid() {
   clearInterval(state.snapTimer);
   clearInterval(state.fpsTimer);
+  clearTimeout(state.parkTimer);
   for (const t of state.tiles.values()) {
     t.ctrl?.abort(); t.ctrl = null;
     if (t.rtc) { t.rtc.close(); t.rtc = null; }
@@ -797,7 +830,7 @@ async function openFocus(name, streamIdx = 0, at = null) {
     handoff = tile.rtc; tile.rtc = null; tile.ctrl = null;
   }
   endGridRec();
-  stopGrid();
+  parkGrid();
   closeFocus(true);
   state.focus = { cam: name, streamIdx, rtc: null, liveCtrl: null, timer: null, mode: "live" };
   $("#grid").hidden = true;
@@ -1229,7 +1262,10 @@ function closeFocus(silent) {
   $("#live-tools").hidden = false;
   rescope();
   setPlaybackUi();
-  if (giveBack) { giveBack.moveTo(tile.video); attachTileRtc(tile, giveBack); }
+  if (giveBack) {
+    if (tile.rtc) giveBack.close(); // the tile kept its own connection
+    else { giveBack.moveTo(tile.video); attachTileRtc(tile, giveBack); }
+  }
   if (resume) playAt(resume); else startGrid();
 }
 

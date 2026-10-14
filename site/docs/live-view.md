@@ -11,7 +11,7 @@ By default the grid shows **snapshots**, refreshed every couple of seconds. They
 
 Tick **Live grid** in the toolbar to stream every tile as live video instead. Your choice is remembered.
 
-Either way, tiles you've scrolled out of view don't stream or fetch snapshots, and live streams close 30 seconds after you minimize or hide the window. They reopen when you come back.
+Either way, tiles you've scrolled out of view don't stream or fetch snapshots, and live streams close 30 seconds after you minimize or hide the window. They reopen when you come back. When you open one camera full size or switch to another tab, the grid's live streams stay connected for two minutes, so going back to the grid is instant; after that they close until you return.
 
 ## How live video is delivered
 
