@@ -44,13 +44,15 @@ def token(port):
     return cookie.split("frigate_token=")[1].split(";")[0]
 
 
-def one_run(binary, port, tok, prefs, timeout):
-    data = Path(tempfile.mkdtemp(prefix="chismoso-bench-"))
+def one_run(binary, port, tok, prefs, timeout, session_url=None, data=None):
+    keep_data = data is not None
+    data = data or Path(tempfile.mkdtemp(prefix="chismoso-bench-"))
     try:
         app_dir = data / APP_ID
-        app_dir.mkdir(parents=True)
+        app_dir.mkdir(parents=True, exist_ok=True)
         (app_dir / "session.json").write_text(json.dumps({
-            "url": f"https://127.0.0.1:{port}", "user": "admin", "token": tok, "self_signed": True, "pinned": None}))
+            "url": session_url or f"https://127.0.0.1:{port}", "user": "admin", "token": tok,
+            "self_signed": True, "pinned": None}))
         env = dict(os.environ, XDG_DATA_HOME=str(data), XDG_CONFIG_HOME=str(data / "config"),
                    XDG_CACHE_HOME=str(data / "cache"), CHISMOSO_TIMING="exit",
                    CHISMOSO_BENCH_PREFS=json.dumps(prefs))
@@ -70,7 +72,8 @@ def one_run(binary, port, tok, prefs, timeout):
         print(out[-2000:], file=sys.stderr)
         return None
     finally:
-        shutil.rmtree(data, ignore_errors=True)
+        if not keep_data:
+            shutil.rmtree(data, ignore_errors=True)
 
 
 def steps(r):
@@ -78,10 +81,46 @@ def steps(r):
     imgs = [v for k, v in m.items() if k.startswith(("img:", "vid:"))]
     vids = [v for k, v in m.items() if k.startswith("vid:")]
     out = {"process": r["process_ms"], "page_ready": m.get("app_js"), "signed_in": m.get("signed_in"),
-           "grid": m.get("grid"), "first_picture": min(imgs) if imgs else None, "all_pictures": m.get("all_pictures")}
+           "grid": m.get("grid"), "server_answered": m.get("overview"),
+           "first_picture": min(imgs) if imgs else None, "all_pictures": m.get("all_pictures")}
     if r["marks"].get("grid_live"):
-        out["all_live"] = max(vids) if len(vids) == m.get("tiles") else None
+        # cameras without live video (the mock's PTZ camera) stay on pictures
+        out["all_live"] = max(vids) if vids else None
+        out["videos"] = len(vids)
     return out
+
+
+def camera(name):
+    return {"name": name, "friendly_name": name, "streams": [["Main", name]], "enabled": True, "audio": False,
+            "detect": True, "recordings": True, "snapshots": True}
+
+
+def scenarios(binary, port, tok):
+    """Checks what happens with a remembered camera list: it's corrected when
+    the server answers, and a bad session or an offline server leads back to
+    the sign-in screen. Prints PASS/FAIL per case; exits 1 on any failure."""
+    url, offline = f"https://127.0.0.1:{port}", "https://127.0.0.1:9"
+    def remembered(u):  # an old camera list: one camera since removed, three since added
+        return {"serverInfo": json.dumps({"url": u, "info": {
+            "base_url": u, "version": "0.0-old", "role": "admin", "groups": [], "cert_fingerprint": None,
+            "cameras": [camera("doorbell"), camera("gone_camera")]}})}
+    stale = remembered(url)
+    cases = [
+        ("no remembered cameras", {}, tok, None, lambda m: m.get("tiles") == 5 and "left" not in m),
+        ("remembered list is corrected", stale, tok, None,
+         lambda m: m.get("tiles") == 5 and "img:gone_camera" not in m and m["grid"] < m["overview"]),
+        ("expired session", stale, "not-a-token", None,
+         lambda m: "left" in m and "expired" in m.get("left_message", "")),
+        ("server offline", remembered(offline), tok, offline, lambda m: "left" in m and "Couldn't load" in m.get("left_message", "")),
+    ]
+    failed = 0
+    for name, storage, token, session_url, ok in cases:
+        r = one_run(binary, port, token, {"keep": True, "_storage": storage}, timeout=60, session_url=session_url)
+        m = r["marks"] if r else {}
+        good = bool(r) and ok(m)
+        failed += not good
+        print(f"{'PASS' if good else 'FAIL'}  {name}" + ("" if good else f"  {json.dumps(m)[:400]}"), flush=True)
+    sys.exit(1 if failed else 0)
 
 
 def main():
@@ -93,6 +132,9 @@ def main():
     ap.add_argument("--live", action="store_true", help="live video grid")
     ap.add_argument("--port", type=int, default=5543)
     ap.add_argument("--json", help="also write every run here")
+    ap.add_argument("--warm", action="store_true",
+                    help="reopen the app with the same data each run (it remembers the cameras); first run not counted")
+    ap.add_argument("--scenarios", action="store_true", help="check remembered-camera edge cases instead of timing")
     a = ap.parse_args()
 
     mock = subprocess.Popen([sys.executable, str(ROOT / "dev/mock_frigate.py"), "--tls", "--port", str(a.port),
@@ -101,10 +143,16 @@ def main():
     try:
         wait_port(a.port)
         tok = token(a.port)
+        if a.scenarios:
+            scenarios(a.binary, a.port, tok)
         prefs = {"gridLive": a.live, "keep": True}
         runs = []
+        data = Path(tempfile.mkdtemp(prefix="chismoso-bench-warm-")) if a.warm else None
+        if data:
+            one_run(a.binary, a.port, tok, prefs, timeout=60, data=data)
+            time.sleep(1.5)
         for i in range(a.runs):
-            r = one_run(a.binary, a.port, tok, prefs, timeout=60)
+            r = one_run(a.binary, a.port, tok, prefs, timeout=60, data=data)
             if r is None:
                 print(f"run {i + 1}: no timing (app failed or timed out)", file=sys.stderr)
                 continue
@@ -116,7 +164,9 @@ def main():
         mock.terminate()
     if not runs:
         sys.exit("no successful runs")
-    print(f"\nmedian of {len(runs)} runs (latency {a.latency} ms, stream start {a.stream_start} ms, "
+    if data:
+        shutil.rmtree(data, ignore_errors=True)
+    print(f"\nmedian of {len(runs)} {'warm ' if a.warm else ''}runs (latency {a.latency} ms, stream start {a.stream_start} ms, "
           f"{'live grid' if a.live else 'picture grid'}):")
     for k in runs[0]:
         vals = [r[k] for r in runs if r.get(k) is not None]

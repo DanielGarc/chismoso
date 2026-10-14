@@ -15,9 +15,11 @@ fn kept_token_resumes_and_bad_token_is_expired() {
     let trust = || Trust { self_signed: true, ..Default::default() };
     let c = Frigate::connect(&url(), "admin", "password", trust()).expect("login");
     let token = c.token().expect("token");
+    // Resuming sends nothing; the first request tells whether the token is good.
     let r = Frigate::resume(&url(), &token, trust()).expect("resume with a good token");
     assert!(r.overview().is_ok());
-    let err = Frigate::resume(&url(), "not-a-token", trust()).err().expect("bad token must fail");
+    let bad = Frigate::resume(&url(), "not-a-token", trust()).expect("resume never touches the network");
+    let Err(err) = bad.overview() else { panic!("bad token must fail") };
     assert!(format!("{err:#}").starts_with("session-expired:"), "{err:#}");
 }
 

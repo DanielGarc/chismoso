@@ -52,6 +52,7 @@ To switch servers or sign out, open the **server menu** (the server's name at th
 Tick **Keep me signed in** and Chismoso signs in by itself the next time it opens, without your password. It does this by keeping Frigate's *session pass* (the token Frigate gives the app after you sign in), **not your password**:
 
 - The pass is saved in Chismoso's own data folder, readable only by your user account.
+- To open faster, Chismoso remembers your last server's camera list (names and streams only) and shows it right away while it checks your pass with Frigate. Cameras added or removed since then appear or disappear a moment later. If the pass has expired or the server can't be reached, you're taken back to this screen with a message.
 - Frigate renews it while you use the app, so using it regularly keeps you signed in. If it expires (you haven't opened the app for a while), you sign in once more.
 - How long a pass lasts is set in Frigate, with `session_length` under `auth` in its config (in seconds; the default is 86400, one day). A longer value means fewer sign-ins:
 

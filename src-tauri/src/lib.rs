@@ -44,6 +44,7 @@ pub fn run() {
             commands::timing_report,
             commands::bench_prefs,
             commands::resume,
+            commands::overview,
             commands::share_files,
             commands::copy_files,
             commands::save_snapshot,

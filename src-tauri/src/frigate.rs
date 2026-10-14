@@ -111,12 +111,12 @@ impl Frigate {
     }
 
     /// Picks up a session saved earlier ("Keep me signed in"): no password,
-    /// just Frigate's session token, checked against the server before use.
-    /// An expired or revoked token fails with `session-expired:`.
+    /// just Frigate's session token. Nothing is sent yet; the first request
+    /// tells whether it's still good (an expired or revoked token fails with
+    /// `session-expired:`).
     pub fn resume(url: &str, token: &str, trust: Trust) -> Result<Self> {
         let client = Self::build(url, trust)?;
         *client.token.write().unwrap() = Some(token.to_string());
-        client.ok(client.req(Method::GET, "/api/profile"))?;
         Ok(client)
     }
 

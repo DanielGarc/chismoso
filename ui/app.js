@@ -42,8 +42,8 @@ const Timing = {
     const names = [...state.tiles.keys()];
     const pic = names.every((n) => `img:${n}` in this.t || `vid:${n}` in this.t);
     if (pic) this.mark("all_pictures");
-    const live = !(prefs.gridLive && Live.supported()) || names.every((n) => `vid:${n}` in this.t);
-    if (pic && live) this.send();
+    const live = !(prefs.gridLive && Live.supported()) || names.every((n) => `vid:${n}` in this.t || `novid:${n}` in this.t);
+    if (pic && live && "overview" in this.t) this.send(); // after the server's answer, which may change the grid
   },
   send() {
     if (this.sent) return;
@@ -132,14 +132,14 @@ async function connect({ trustNew = false } = {}) {
   savePrefs();
   try {
     Timing.mark("signin_start");
-    state.info = await invoke("connect", {
+    const signed = await invoke("connect", {
       url: prefs.url, user: prefs.user, password: $("#f-pass").value,
       selfSigned, pinned: selfSigned ? prefs.pins[prefs.url] ?? null : null, keep: prefs.keep,
     });
     Timing.mark("signed_in");
-    if (state.info.cert_fingerprint) { prefs.pins[prefs.url] = state.info.cert_fingerprint; savePrefs(); }
+    if (signed.cert_fingerprint) { prefs.pins[prefs.url] = signed.cert_fingerprint; savePrefs(); }
     $("#f-pass").value = "";
-    enterApp();
+    await openSession(signed.base_url);
   } catch (e) {
     const code = errCode(e);
     if (trustNew && code === "certificate-untrusted") {
@@ -162,6 +162,57 @@ async function connect({ trustNew = false } = {}) {
     btn.disabled = false; btn.textContent = "Connect";
   }
 }
+// The last server's cameras, kept so the next start can show them before the
+// server answers (only one server, and nothing secret: names and streams).
+const infoCache = {
+  get(url) {
+    try { const c = JSON.parse(localStorage.getItem("serverInfo") || "null"); return c?.url === url ? c.info : null; }
+    catch (_) { return null; }
+  },
+  set(url, info) {
+    try { localStorage.setItem("serverInfo", JSON.stringify({ url, info: { ...info, cert_fingerprint: null } })); } catch (_) {}
+  },
+};
+
+// Signed in (password or kept session). With a camera list remembered for
+// this server, the app opens on it at once (pictures and streams start
+// loading) while the server is asked for the current list, version and role;
+// any camera added or removed since then is picked up when that answers.
+// Without one, it waits for the answer. Errors before the app opens go to the
+// caller (the sign-in form); after, they lead back to the sign-in screen.
+async function openSession(url) {
+  const fresh = invoke("overview");
+  const cached = infoCache.get(url);
+  if (!cached) {
+    const info = await fresh;
+    Timing.mark("overview");
+    state.info = info; infoCache.set(url, info);
+    enterApp();
+    return;
+  }
+  state.info = cached;
+  enterApp();
+  try {
+    applyOverview(await fresh, url);
+  } catch (e) {
+    if (!state.info) return; // signed out meanwhile
+    const expired = errCode(e) === "session-expired";
+    leave(expired ? errText(e) : `Couldn't load your cameras: ${errText(e)}`, { forget: false });
+  }
+}
+
+function applyOverview(info, url) {
+  Timing.mark("overview");
+  const old = state.info;
+  state.info = info; infoCache.set(url, info);
+  setMenuMeta();
+  const key = (i) => JSON.stringify([i.cameras, i.groups]);
+  if (key(old) !== key(info)) { // cameras added, removed or changed
+    fillLayoutPicker(); stopGrid(); buildGrid(); startGrid();
+  }
+  Timing.check();
+}
+
 // "Keep me signed in": the backend saved Frigate's session token (never the
 // password). On start, try it before showing the sign-in form.
 async function resumeSession() {
@@ -174,8 +225,7 @@ async function resumeSession() {
     Timing.mark("signed_in");
     prefs.url = kept.url; prefs.user = kept.user; savePrefs();
     $("#f-url").value = kept.url; $("#f-user").value = kept.user;
-    state.info = kept.info;
-    enterApp();
+    await openSession(kept.base_url);
     return true;
   } catch (e) {
     err.textContent = errCode(e) === "session-expired"
@@ -189,7 +239,15 @@ async function resumeSession() {
   }
 }
 // Signs in with the session "Keep me signed in" saved, if there is one.
-invoke("bench_prefs").catch(() => null).then((p) => { if (p) Object.assign(prefs, p); resumeSession(); });
+// A benchmark run can start with settings and stored data of its choosing.
+invoke("bench_prefs").catch(() => null).then((p) => {
+  if (p) {
+    for (const [k, v] of Object.entries(p._storage || {})) store.set(k, v);
+    delete p._storage;
+    Object.assign(prefs, p);
+  }
+  resumeSession();
+});
 
 $("#login-form").addEventListener("input", () => { $("#cert-box").hidden = true; $("#login-btn").hidden = false; });
 $("#login-form").addEventListener("submit", (ev) => { ev.preventDefault(); connect(); });
@@ -207,7 +265,7 @@ async function enterApp() {
   $("#server-name").textContent = /^[\d.]+$|^\[/.test(hostname) ? hostname : hostname.split(".")[0];
   $("#server-chip").title = host;
   $("#menu-host").textContent = host;
-  $("#menu-meta").textContent = `Frigate ${i.version} · ${prefs.user || "internal port"} (${i.role})`;
+  setMenuMeta();
   $("#tabs").hidden = false;
   $("#server-wrap").hidden = false;
   if (!prefs.outDir) { prefs.outDir = await invoke("default_output_dir"); savePrefs(); }
@@ -224,12 +282,20 @@ async function enterApp() {
   showView("live");
 }
 
-async function leave(message) {
+function setMenuMeta() {
+  const i = state.info;
+  $("#menu-meta").textContent = `Frigate ${i.version} · ${prefs.user || "internal port"} (${i.role})`;
+}
+
+// Back to the sign-in screen. `forget: false` keeps a kept session (the server
+// couldn't be reached; Connect tries it again).
+async function leave(message, { forget = true } = {}) {
+  Timing.mark("left"); Timing.t.left_message = message || ""; Timing.send();
   closeMenu();
   closeFocus(true); endGridRec(); stopGrid();
   timeline?.clearCache();
   clearInterval(state.statsTimer); clearInterval(state.snapTimer); clearInterval(state.loadTimer); stopLoadRecorder();
-  await invoke("disconnect").catch(() => {});
+  await invoke("disconnect", { forget }).catch(() => {});
   state.info = null; state.stats = null; state.cfgOriginal = ""; cfg.value = "";
   $("#tabs").hidden = true;
   $("#server-wrap").hidden = true;
@@ -527,7 +593,7 @@ async function startTileVideo(name, t) {
     attachTileRtc(t, rtc);
     if (t.video.readyState >= 2) Timing.tile("vid", name);
     else t.video.addEventListener("loadeddata", () => Timing.tile("vid", name), { once: true });
-  } catch (_) { /* stays on snapshots */ }
+  } catch (_) { Timing.tile("novid", name); /* stays on snapshots */ }
   finally { if (t.ctrl === ctrl && !t.rtc) t.ctrl = null; }
 }
 
