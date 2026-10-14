@@ -35,6 +35,8 @@ jobs:
 
       - name: Lint the metadata
         run: |
+          flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install -y --noninteractive flathub org.flatpak.Builder
           flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/org.caprichosos.chismoso.yml || true
           flatpak run --command=flatpak-builder-lint org.flatpak.Builder appstream flatpak/org.caprichosos.chismoso.metainfo.xml
           desktop-file-validate flatpak/org.caprichosos.chismoso.desktop
