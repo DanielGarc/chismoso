@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css">
   <script src="theme.js"></script>
 </head>
-<body>
+<body class="booting">
 
 <!-- ── App bar (also the window's title bar) ─────────────── -->
 <header class="appbar" data-tauri-drag-region>
@@ -22,16 +22,6 @@
     <button class="tab" data-view="load" role="tab" title="Load on your Frigate server (Ctrl+3)"><svg viewBox="0 0 24 24"><path d="M3 13h4l2.5-6 4 11 2.5-5H21v2h-3.7l-3.8 7.5-4-11L8.3 15H3z"/></svg><span>Load</span></button>
     <button class="tab" data-view="settings" role="tab" title="Settings (Ctrl+4)"><svg viewBox="0 0 24 24"><path d="M10.3 2h3.4l.5 2.6 1.6.7 2.2-1.5 2.4 2.4-1.5 2.2.7 1.6 2.6.5v3.4l-2.6.5-.7 1.6 1.5 2.2-2.4 2.4-2.2-1.5-1.6.7-.5 2.6h-3.4l-.5-2.6-1.6-.7-2.2 1.5-2.4-2.4 1.5-2.2-.7-1.6L2 13.7v-3.4l2.6-.5.7-1.6-1.5-2.2 2.4-2.4 2.2 1.5 1.6-.7zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"/></svg><span>Settings</span></button>
   </nav>
-  <div class="appbar-tools" id="live-tools" hidden>
-    <div class="layout-pick">
-      <select id="layout" aria-label="Layout" title="Which cameras to show"></select>
-      <button class="btn icon slim" id="layout-edit" title="Edit layouts">✎</button>
-    </div>
-    <div class="seg mini" id="cols" title="Grid columns">
-      <button data-cols="0" class="on">Auto</button><button data-cols="1">1</button><button data-cols="2">2</button><button data-cols="3">3</button><button data-cols="4">4</button>
-    </div>
-    <label class="check small"><input type="checkbox" id="grid-live"> Live grid</label>
-  </div>
   <div class="appbar-drag" data-tauri-drag-region></div>
   <div class="menu-wrap" id="server-wrap" hidden>
     <button class="server-chip" id="server-chip" aria-haspopup="menu" aria-expanded="false">
@@ -101,7 +91,40 @@
   <main>
     <!-- Live -->
     <section class="view" id="view-live">
-      <div class="grid" id="grid"></div>
+      <div class="vbar" id="vbar">
+        <div class="vtabs" id="vtabs" role="tablist" aria-label="Views"></div>
+        <button class="vtab vadd" id="vadd" aria-label="New view" title="New view"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+        <span class="grow"></span>
+        <span class="vsum" id="vsum" aria-live="polite"></span>
+        <button class="btn slim" id="arrange" data-wide title="Move, add and resize cameras in this view"><svg class="btn-ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></svg>Arrange</button>
+      </div>
+      <div class="arrange-bar" id="arrange-bar" hidden>
+        <span>Drop cameras anywhere. Drop one on another to swap them, and pull a camera's blue corner to make it bigger.</span>
+        <span class="grow"></span>
+        <button class="btn slim" id="arr-fill">Add the other cameras</button>
+        <button class="btn slim" id="arr-undo" disabled>Undo</button>
+        <button class="btn slim primary" id="arr-done">Done</button>
+      </div>
+      <div class="live-body">
+      <aside class="rail" id="rail" aria-label="Cameras" data-wide>
+        <div class="rail-head"><strong>Cameras</strong><span class="muted small" id="rail-sum"></span></div>
+        <ul class="rail-list" id="rail-list"></ul>
+        <p class="rail-hint muted small">Drag a camera onto the grid to place it.</p>
+      </aside>
+      <div class="grid" id="grid">
+        <div class="wall" id="wall"></div>
+        <div class="view-empty" id="view-empty" hidden>
+          <h3>Drag cameras anywhere</h3>
+          <p class="muted">Drop them where you like and pull a corner to make one bigger. The view always fills the window.</p>
+          <button class="btn" id="empty-fill">Add every camera</button>
+        </div>
+        <div class="zoomctl" id="zoomctl" role="group" aria-label="Zoom" data-wide>
+          <button id="zoom-out" aria-label="Zoom out" title="Zoom out (Ctrl+−)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+          <span id="zoom-val">100%</span>
+          <button id="zoom-in" aria-label="Zoom in" title="Zoom in (Ctrl+=, or the mouse wheel)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+          <button id="zoom-fit" class="txt" title="Fit to the window (Ctrl+0)">Fit</button>
+        </div>
+      </div>
       <div class="focus" id="focus" hidden>
         <div class="focus-bar">
           <button class="btn ghost" id="focus-back">← All cameras</button>
@@ -133,6 +156,7 @@
             <select id="ptz-preset" class="ptz-preset" aria-label="Go to a preset position" hidden><option value="">Presets</option></select>
           </div>
         </div>
+      </div>
       </div>
       <div class="pb" id="pb">
         <div class="pb-row">
@@ -312,6 +336,7 @@
       <div class="card" id="theme-card">
         <div class="card-head"><h3>Appearance</h3></div>
         <div class="notify">
+          <label class="check"><input type="checkbox" id="s-grid-live"> <span>Live video in the grid <span class="muted">(off: pictures that refresh every few seconds, for slow connections)</span></span></label>
           <label class="inline">Theme
             <select id="t-theme">
               <option value="system">Match my system</option>
@@ -389,29 +414,6 @@
   <video id="player-video" controls autoplay playsinline></video>
 </dialog>
 
-<dialog id="layout-dlg" class="dlg">
-  <form method="dialog" id="layout-form">
-    <div class="dlg-head"><h3>Layouts</h3><button class="btn ghost slim" value="cancel" formnovalidate>Close</button></div>
-    <div class="dlg-body">
-      <label>Layout
-        <select id="lay-pick"></select>
-      </label>
-      <label>Name <input id="lay-name" required maxlength="40" placeholder="e.g. Outside"></label>
-      <div class="field-head"><span class="muted small">Cameras and order</span><span class="muted small">Tick to show · arrows to reorder</span></div>
-      <ul class="lay-cams" id="lay-cams"></ul>
-      <label class="inline">Columns
-        <select id="lay-cols"><option value="0">Auto</option><option>1</option><option>2</option><option>3</option><option>4</option></select>
-      </label>
-      <p class="muted small" id="lay-note"></p>
-    </div>
-    <div class="dlg-foot">
-      <button type="button" class="btn danger" id="lay-delete">Delete</button>
-      <span class="grow"></span>
-      <button type="button" class="btn" id="lay-new">New layout</button>
-      <button type="button" class="btn primary" id="lay-save">Save</button>
-    </div>
-  </form>
-</dialog>
 
 <dialog id="about" class="dlg about">
   <form method="dialog">
@@ -437,6 +439,7 @@
 <script src="webrtc.js"></script>
 <script src="playback.js"></script>
 <script src="timeline.js"></script>
+<script src="views.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

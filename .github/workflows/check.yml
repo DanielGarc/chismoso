@@ -37,7 +37,7 @@ jobs:
         run: cargo test
       - name: UI scripts parse
         if: runner.os == 'Linux'
-        run: for f in ui/*.js; do node --check "$f"; done
+        run: for f in ui/*.js; do node --check "$f"; done && node ui/views.js --test
 
   android:
     name: Android (library check)

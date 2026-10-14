@@ -20,7 +20,7 @@ Yes. It's free to download and use, and the source code is on [GitHub]({{gh}}).
 
 ### Why not just use Frigate's web page?
 
-You can, and it's excellent. Chismoso is for when you want a dedicated app: a window that remembers your layout, native notifications without a broker, a timeline built for scrubbing through days of footage, timelapses of several cameras at once, and keyboard control, in a small download.
+You can, and it's excellent. Chismoso is for when you want a dedicated app: a window that remembers your views, native notifications without a broker, a timeline built for scrubbing through days of footage, timelapses of several cameras at once, and keyboard control, in a small download.
 
 ### Why is it so small?
 

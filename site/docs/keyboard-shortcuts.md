@@ -17,6 +17,14 @@ On a Mac, use <kbd>⌘</kbd> wherever this page says <kbd>Ctrl</kbd>.
 | <kbd>F11</kbd> | Full-screen window |
 | <kbd>Esc</kbd> | Close a menu, leave full screen, or go back from a camera to the grid |
 
+## The grid
+
+| Keys | What they do |
+|---|---|
+| <kbd>Ctrl</kbd>+<kbd>=</kbd> / <kbd>Ctrl</kbd>+<kbd>-</kbd> | Zoom the grid in / out (the mouse wheel zooms where the pointer is) |
+| <kbd>Ctrl</kbd>+<kbd>0</kbd> | Show the whole view again |
+| <kbd>Esc</kbd> | Finish arranging |
+
 ## Live view and playback
 
 These work on the Live tab when you're not typing in a field.

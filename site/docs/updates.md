@@ -17,7 +17,7 @@ When there's a newer version, a bar at the top of the window says so:
 
 If an update can't be installed, the bar says so and offers **Try again** and **Download from the website**.
 
-Your settings, layouts and pinned certificates are kept. Nothing is installed without you clicking, and the check only asks GitHub which version is newest; it doesn't send anything about you or your cameras. Every update is signed, and the app refuses one whose signature doesn't match, so a tampered download can't be installed.
+Your settings, views and pinned certificates are kept. Nothing is installed without you clicking, and the check only asks GitHub which version is newest; it doesn't send anything about you or your cameras. Every update is signed, and the app refuses one whose signature doesn't match, so a tampered download can't be installed.
 
 **Linux:** updates work for the AppImage, `.deb` and `.rpm`. For `.deb` and `.rpm`, Linux asks for your password, because installing a package needs admin rights.
 

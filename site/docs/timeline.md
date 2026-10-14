@@ -21,7 +21,7 @@ Under the camera grid, and under each camera in the camera view, there's a bar c
 | <span class="swatch sw-det"></span> Amber marks | Detections |
 | Red line | The playhead: the moment you're watching |
 
-In the grid, the bar covers every camera in the layout. In the camera view it covers just that camera.
+In the grid, the bar covers every camera in the view. In the camera view it covers just that camera.
 
 New alerts and detections appear within a couple of seconds, pushed from Frigate as they happen, so you don't need to refresh.
 

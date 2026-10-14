@@ -65,15 +65,23 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .view { flex: 1; overflow: auto; padding: 18px 20px 28px; }
 
 /* ── live grid ────────────────────────── */
-.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); grid-auto-rows: max-content; } /* tiles keep 16:9 even when the grid scrolls */
-.tile { position: relative; background: var(--video); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; aspect-ratio: 16 / 9; cursor: pointer; }
+/* The grid is a wall of 12×12 cells that fills the space (views.js); it can
+   be zoomed and dragged around. Phones show the same cameras in two columns. */
+.grid { position: relative; overflow: hidden; border-radius: var(--radius); touch-action: none; }
+.wall { position: absolute; inset: 0; display: grid; gap: 6px; grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: repeat(12, minmax(0, 1fr)); transform-origin: 0 0; }
+.grid.zoomed { cursor: grab; }
+.tile { position: relative; background: var(--video); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; cursor: pointer; min-width: 0; min-height: 0; }
 .tile:hover { border-color: var(--accent); }
 .tile img, .tile video { width: 100%; height: 100%; object-fit: contain; display: block; background: var(--video); }
 .tile .label { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 10px 7px; display: flex; align-items: center; gap: 7px;
   background: linear-gradient(transparent, #000c); font-size: 13px; font-weight: 600; }
 .tile .label .fps { margin-left: auto; font-weight: 400; color: #cbd5e1; font-size: 11.5px; }
-.tile .state { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-.tile .state.live { background: var(--ok); } .tile .state.off { background: var(--bad); }
+.state { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; display: inline-block; }
+.state.live { background: var(--ok); } .state.off { background: var(--bad); }
+.state.conn { background: var(--warn); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+@keyframes spin { to { transform: rotate(360deg); } }
 .tile .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; }
 
 .focus { display: flex; flex-direction: column; height: 100%; gap: 10px; }
@@ -82,9 +90,80 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .stage { flex: 1; min-height: 300px; position: relative; background: #000; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); }
 .stage video, .stage img { width: 100%; height: 100%; object-fit: contain; position: absolute; inset: 0; }
 .stage-msg { position: absolute; left: 12px; bottom: 12px; margin: 0; padding: 6px 10px; background: #000b; border-radius: 6px; color: #fcd34d; font-size: 12.5px; max-width: 80%; }
-#view-live:not([hidden]) { display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
-#view-live .grid { flex: 1; min-height: 0; overflow: auto; align-content: start; }
-#view-live .focus { flex: 1; min-height: 0; }
+#view-live:not([hidden]) { display: flex; flex-direction: column; gap: 8px; overflow: hidden; position: relative; padding-top: 8px; }
+#view-live .live-body { flex: 1; min-height: 0; display: flex; gap: 10px; }
+#view-live .grid { flex: 1; min-width: 0; }
+#view-live .focus { flex: 1; min-height: 0; min-width: 0; }
+#view-live.in-focus .vbar, #view-live.in-focus .rail, #view-live.in-focus .arrange-bar { display: none; }
+
+/* view tabs */
+.vbar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.vtabs { display: flex; gap: 4px; flex-wrap: wrap; min-width: 0; }
+.vtab { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; border: 1px solid transparent; border-radius: 8px;
+  background: none; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.vtab:hover { background: var(--hover-ghost); color: var(--text); }
+.vtab.on { background: var(--panel-2); border-color: var(--line); color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); padding-right: 6px; }
+.vtab svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.vadd { padding: 0 9px; }
+.cnt { font-size: 11.5px; padding: 0 6px; border-radius: 99px; background: var(--sunken); color: var(--muted); border: 1px solid var(--line); line-height: 17px; }
+.vmore { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; color: var(--muted); }
+.vmore:hover { background: var(--hover-ghost); color: var(--text); }
+.vmore svg { fill: currentColor; stroke: none; }
+.vrename { width: 140px; padding: 3px 6px; font-size: 13px; }
+.vsum { display: flex; gap: 12px; font-size: 12.5px; color: var(--muted); margin-right: 8px; }
+.vsum .vs { display: inline-flex; align-items: center; gap: 6px; }
+.vmenu { left: 0; right: auto; min-width: 190px; z-index: 20; }
+.vmenu .bad { color: var(--bad-text); }
+.arrange-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; border-radius: 10px;
+  background: var(--info-bg); border: 1px solid var(--info-line); color: var(--info-text); font-size: 13px; }
+
+/* camera list */
+.rail { width: 210px; flex: none; display: flex; flex-direction: column; gap: 8px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 10px 8px; min-height: 0; }
+.rail-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 6px; gap: 8px; }
+.rail-list { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.rail-item { display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 8px; cursor: grab; font-size: 13px; touch-action: none; user-select: none; }
+.rail-item:hover { background: var(--hover-ghost); }
+.rail-item.in .rail-name { color: var(--text); }
+.rail-item:not(.in) .rail-name { color: var(--muted); }
+.rail-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-hint { margin: 0; padding: 8px 6px 0; border-top: 1px solid var(--row-line); }
+
+/* tile states and tools */
+.tile-msg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: none; align-items: center; gap: 8px;
+  background: #000a; color: #fff; padding: 6px 12px; border-radius: 99px; font-size: 12.5px; white-space: nowrap; pointer-events: none; }
+.tile.connecting .conn-msg, .tile.offline .off-msg { display: inline-flex; }
+.tile.connecting img { filter: grayscale(.5) brightness(.55); }
+.tile.offline img { filter: grayscale(1) brightness(.35); }
+.spin { width: 13px; height: 13px; border-radius: 50%; border: 2px solid #ffffff40; border-top-color: #fff; animation: spin .9s linear infinite; }
+.tile-tools { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; opacity: 0; transition: opacity .15s; }
+.tile:hover .tile-tools, .tile:focus-within .tile-tools, html.touch .tile-tools { opacity: 1; }
+.tt { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 7px; border: 0; background: #000b; color: #fff; cursor: pointer; }
+.tt svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.tt.arr, .tile .resize { display: none; }
+body.arranging .tt.arr { display: grid; }
+body.arranging .tile .resize { display: block; position: absolute; right: -1px; bottom: -1px; width: 20px; height: 20px; background: var(--accent);
+  border-radius: 8px 0 var(--radius) 0; cursor: nwse-resize; touch-action: none; }
+body.arranging .tile { cursor: move; }
+body.arranging .tile:hover { border-color: var(--accent); }
+body.arranging .wall, body.dragging .wall, .grid.empty .wall {
+  background-image: radial-gradient(circle, var(--line-strong) 1.2px, transparent 1.6px); background-size: calc(100% / 12) calc(100% / 12); }
+.drop-hint { border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 22%, transparent); border-radius: var(--radius);
+  display: grid; place-items: center; color: var(--sel-text); font-weight: 600; font-size: 13px; pointer-events: none; z-index: 2; }
+.drag-ghost { position: fixed; left: 0; top: 0; z-index: 50; pointer-events: none; padding: 6px 12px; border-radius: 8px;
+  background: var(--accent); color: var(--on-accent); font-weight: 600; font-size: 13px; box-shadow: 0 10px 30px #0008; }
+body.dragging, body.dragging * { cursor: grabbing !important; }
+.view-empty { position: absolute; inset: 0; margin: auto; width: min(420px, 90%); height: max-content; display: flex; flex-direction: column;
+  align-items: center; gap: 10px; text-align: center; padding: 22px; background: var(--bg); border-radius: 14px; z-index: 1; }
+.view-empty p { margin: 0; }
+.zoomctl { position: absolute; right: 12px; bottom: 12px; display: flex; align-items: center; gap: 2px; background: #000b; border: 1px solid #ffffff22;
+  border-radius: 10px; padding: 3px; color: #fff; font-size: 12.5px; z-index: 3; }
+.zoomctl button { min-width: 30px; height: 30px; display: grid; place-items: center; border: 0; background: none; color: #fff; border-radius: 7px; cursor: pointer; }
+.zoomctl button:hover { background: #ffffff22; }
+.zoomctl button.txt { padding: 0 9px; }
+.zoomctl svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+#zoom-val { min-width: 44px; text-align: center; font-variant-numeric: tabular-nums; }
+body.arranging .zoomctl { display: none; }
 #view-live .pb { flex: none; }
 
 /* ── cards & forms ────────────────────── */
@@ -409,7 +488,14 @@ html[data-compact] .tab svg { width: 20px; height: 20px; }
 html[data-compact] main { padding-bottom: calc(62px + env(safe-area-inset-bottom)); }
 html[data-compact] .menu-wrap { margin-left: auto; }
 html[data-compact] .appbar-tools { order: 5; width: 100%; flex-wrap: wrap; }
-html[data-compact] #cols { display: none; }
+html[data-compact] [data-wide] { display: none !important; }
+html[data-compact] .grid { overflow: auto; touch-action: auto; }
+html[data-compact] .wall { position: static; transform: none !important; grid-template-columns: 1fr 1fr; grid-template-rows: none; grid-auto-rows: auto; gap: 8px; }
+html[data-compact] .wall .tile { grid-column: auto !important; grid-row: auto !important; aspect-ratio: 16 / 9; }
+html[data-compact] .wall .tile.wide { grid-column: span 2 !important; }
+html[data-compact] .vbar { flex-wrap: nowrap; }
+html[data-compact] .vtabs { flex-wrap: nowrap; overflow-x: auto; }
+html[data-compact] .vsum { display: none; }
 html[data-compact] #grid { grid-template-columns: 1fr !important; }
 html[data-compact] .view { padding: 10px 10px 16px; }
 html[data-compact] .focus-bar { gap: 6px; }
@@ -481,3 +567,16 @@ html[data-compact] .update-row .grow { flex-basis: 100%; height: 0; }
 .ptz-preset { background: #000b; color: #fff; border: 1px solid #ffffff33; border-radius: 8px; padding: 6px 8px; font-size: 12.5px; max-width: 140px; }
 html.touch .ptz-pad { grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(3, 44px); }
 html.touch .ptz-b { width: 44px; height: 44px; }
+
+/* start-up: the sign-in form waits for the kept-session check; a thin line
+   under the top bar while the server is checked (the app already shows the
+   cameras it remembers) */
+body.booting #login { visibility: hidden; }
+body.syncing .appbar { position: relative; }
+body.syncing .appbar::after { content: ""; position: absolute; left: 0; bottom: -1px; height: 2px; width: 30%;
+  background: var(--accent); animation: syncing 1.1s ease-in-out infinite; pointer-events: none; }
+@keyframes syncing { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+body.arranging #arrange { display: none; }
+body.dragging { user-select: none; -webkit-user-select: none; }
+body.dragging .view-empty { display: none; }
+html[data-compact] .tile-tools { display: none; }

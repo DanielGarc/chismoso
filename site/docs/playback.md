@@ -4,11 +4,11 @@ nav: Playback & speed
 description: Play recordings of one camera or a whole grid in sync, from −16× in reverse to 16×, with J, K and L.
 ---
 
-Click the [timeline](timeline.md) and recordings start playing from that moment. In the camera view that's one camera; in the grid it's every camera in the layout, kept in step.
+Click the [timeline](timeline.md) and recordings start playing from that moment. In the camera view that's one camera; in the grid it's every camera in the view, kept in step.
 
 ## Grid playback
 
-When you click the bar under the grid, all cameras in the layout play from the same moment and stay in sync with each other.
+When you click the bar under the grid, all cameras in the view play from the same moment and stay in sync with each other.
 
 - A camera with **no footage** at that moment says so, and joins in when its footage starts.
 - **At most four cameras play video at once**, because each pulls a full-resolution recording from Frigate. The others show a still from the recordings every few seconds. Click one to make it play.

@@ -19,7 +19,7 @@ That's the whole list. Video from your cameras goes from Frigate to your screen 
 |---|---|---|
 | Frigate address and username | App preferences | So you don't retype them |
 | "Trust this certificate" choice and the pinned fingerprint | App preferences | Certificate pinning (below) |
-| Your layouts, grid columns, "Live grid" choice | App preferences | So the app looks the way you left it |
+| Your views, the camera list of your last server, the "Live video in the grid" choice | App preferences | So the app looks the way you left it |
 | Export settings (speed, frame rate, folder, cameras) | App preferences | So the Timelapse tab remembers |
 | Notification settings | App preferences | — |
 | 24-hour load trends, per server | App local storage | The [Load screen](load.md) |

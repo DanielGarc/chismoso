@@ -209,12 +209,15 @@ async function openSession(url) {
   }
   state.info = cached;
   enterApp();
+  document.body.classList.add("syncing"); // a thin line under the top bar until the server answers
   try {
     applyOverview(await fresh, url);
   } catch (e) {
     if (!state.info) return; // signed out meanwhile
     const expired = errCode(e) === "session-expired";
     leave(expired ? errText(e) : `Couldn't load your cameras: ${errText(e)}`, { forget: false });
+  } finally {
+    document.body.classList.remove("syncing");
   }
 }
 
@@ -225,7 +228,7 @@ function applyOverview(info, url) {
   setMenuMeta();
   const key = (i) => JSON.stringify([i.cameras, i.groups]);
   if (key(old) !== key(info)) { // cameras added, removed or changed
-    fillLayoutPicker(); stopGrid(); buildGrid(); startGrid();
+    ensureViews(); renderTabs(); buildGrid(); startGrid();
   }
   Timing.check();
 }
@@ -238,13 +241,14 @@ async function resumeSession() {
   try {
     Timing.mark("signin_start");
     const kept = await invoke("resume");
-    if (!kept) { delete Timing.t.signin_start; return false; }
+    if (!kept) { delete Timing.t.signin_start; document.body.classList.remove("booting"); return false; }
     Timing.mark("signed_in");
     prefs.url = kept.url; prefs.user = kept.user; savePrefs();
     $("#f-url").value = kept.url; $("#f-user").value = kept.user;
     await openSession(kept.base_url);
     return true;
   } catch (e) {
+    document.body.classList.remove("booting");
     err.textContent = errCode(e) === "session-expired"
       ? errText(e)
       : `Couldn't sign in with your saved session: ${errText(e)} Press Connect to try again, or enter your password.`;
@@ -256,6 +260,9 @@ async function resumeSession() {
   }
 }
 // Signs in with the session "Keep me signed in" saved, if there is one.
+// While the kept session is looked up (a few milliseconds) the sign-in form
+// stays hidden, so a signed-in start goes straight to the cameras.
+setTimeout(() => document.body.classList.remove("booting"), 4000); // never stuck hidden
 // A benchmark run can start with settings and stored data of its choosing.
 invoke("bench_prefs").catch(() => null).then((p) => {
   if (p) {
@@ -289,7 +296,9 @@ async function enterApp() {
   if (!prefs.outDir) { prefs.outDir = await invoke("default_output_dir"); savePrefs(); }
   setupExportsForm();
   setupNotifications();
-  fillLayoutPicker();
+  ensureViews();
+  renderTabs();
+  $("#s-grid-live").checked = prefs.gridLive;
   buildGrid();
   Timing.mark("grid");
   setTimeout(() => Timing.send(), 30000); // report even if some cameras never show up
@@ -317,7 +326,8 @@ async function leave(message, { forget = true } = {}) {
   state.info = null; state.stats = null; state.cfgOriginal = ""; cfg.value = "";
   $("#tabs").hidden = true;
   $("#server-wrap").hidden = true;
-  $("#live-tools").hidden = true;
+  if (state.arranging) { state.arranging = false; document.body.classList.remove("arranging"); $("#arrange-bar").hidden = true; }
+  resetZoom();
   $("#shell").hidden = true;
   $("#login").hidden = false;
   if (message) { $("#login-error").textContent = message; $("#login-error").hidden = false; }
@@ -341,7 +351,6 @@ function showView(v) {
   state.view = v;
   $$(".tab[data-view]").forEach((b) => b.classList.toggle("active", b.dataset.view === v));
   for (const id of ["live", "exports", "load", "settings"]) $("#view-" + id).hidden = id !== v;
-  $("#live-tools").hidden = v !== "live" || !!state.focus;
   if (v === "live") { if (!state.focus) startGrid(); }
   else { endGridRec(); closeFocus(true); parkGrid(); }
   if (v === "exports") refreshExports();
@@ -410,171 +419,481 @@ function wakeLive() {
   else if (was === "grid" && !state.focus && !state.gridRec) startGrid();
 }
 
-// ══ Layouts (which cameras the grid shows) ══════════════════════════
+// ══ Views: the tabs above the grid (layout logic in views.js) ═══════
 const isAdmin = () => state.info?.role === "admin";
 function camByName(name) { return state.info.cameras.find((c) => c.name === name); }
-
-// Cameras for the current layout, in order.
-function layoutCameras() {
-  const all = state.info.cameras;
-  const known = (names) => names.map(camByName).filter(Boolean);
-  if (prefs.layout.startsWith("g:")) {
-    const g = state.info.groups.find((x) => x.name === prefs.layout.slice(2));
-    if (g) return known(g.cameras);
-  } else if (prefs.layout.startsWith("m:")) {
-    const l = prefs.layouts.find((x) => x.id === prefs.layout.slice(2));
-    if (l) return known(l.cameras);
-  }
-  return all;
-}
-
-function fillLayoutPicker() {
-  const sel = $("#layout");
-  const opt = (value, label) => h("option", { value, selected: prefs.layout === value }, label);
-  const groups = state.info.groups.length
-    ? h("optgroup", { label: "Frigate camera groups" }, state.info.groups.map((g) => opt("g:" + g.name, prettyName(g.name)))) : null;
-  const mine = prefs.layouts.length
-    ? h("optgroup", { label: "My layouts" }, prefs.layouts.map((l) => opt("m:" + l.id, l.name))) : null;
-  sel.replaceChildren(opt("all", "All cameras"), groups, mine);
-  if (sel.value !== prefs.layout) { prefs.layout = "all"; sel.value = "all"; }
-}
 const prettyName = (s) => s.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
-$("#layout").addEventListener("change", (e) => {
-  prefs.layout = e.target.value;
-  const mine = prefs.layouts.find((l) => "m:" + l.id === prefs.layout);
-  if (mine && mine.cols != null) prefs.cols = mine.cols;
-  savePrefs();
-  stopGrid(); buildGrid(); startGrid();
-});
-
-// ── layout editor ──
-let layDraft = null; // { id|null, name, order: [names], on: Set, cols }
-$("#layout-edit").addEventListener("click", () => {
-  const mine = prefs.layouts.find((l) => "m:" + l.id === prefs.layout);
-  openLayoutDraft(mine || null);
-  $("#layout-dlg").showModal();
-});
-function openLayoutDraft(l) {
-  const names = state.info.cameras.map((c) => c.name);
-  if (l) {
-    const order = [...l.cameras.filter((n) => names.includes(n)), ...names.filter((n) => !l.cameras.includes(n))];
-    layDraft = { id: l.id, name: l.name, order, on: new Set(l.cameras), cols: l.cols ?? 0 };
-  } else {
-    const shown = layoutCameras().map((c) => c.name);
-    const order = [...shown, ...names.filter((n) => !shown.includes(n))];
-    layDraft = { id: null, name: "", order, on: new Set(shown), cols: prefs.cols };
+// Views are kept per device in prefs.views; prefs.view is the open one.
+// Called whenever the server's camera list arrives or changes.
+function ensureViews() {
+  const cams = state.info.cameras.map((c) => c.name);
+  let views = Views.clean(prefs.views);
+  if (!views) {
+    // First start with views: Frigate's camera groups and earlier layouts
+    // become views (tabs), and the grid
+    // shows live video by default (streams now stay connected while the app is open).
+    const groups = (state.info.groups || []).map((g) => ({ name: prettyName(g.name), cameras: g.cameras }));
+    views = Views.initial(cams, [...groups, ...(prefs.layouts || [])], newId);
+    if (prefs.views === undefined) prefs.gridLive = true;
   }
-  $("#lay-pick").replaceChildren(h("option", { value: "" }, "New layout"),
-    ...prefs.layouts.map((x) => h("option", { value: x.id, selected: x.id === layDraft.id }, x.name)));
-  $("#lay-name").value = layDraft.name;
-  $("#lay-cols").value = String(layDraft.cols || 0);
-  $("#lay-delete").hidden = !layDraft.id;
-  $("#lay-note").textContent = state.info.groups.length
-    ? "Frigate camera groups come from config.yml (camera_groups) and show in the layout list as they are." : "";
-  renderLayoutCams();
+  prefs.views = views.map((v) => Views.sync(v, cams));
+  if (!prefs.views.some((v) => v.id === prefs.view)) prefs.view = prefs.views[0].id;
+  savePrefs();
 }
-function renderLayoutCams() {
-  const ul = $("#lay-cams");
-  ul.replaceChildren(...layDraft.order.map((name, i) => {
-    const cam = camByName(name);
-    const cb = h("input", { type: "checkbox", checked: layDraft.on.has(name) });
-    cb.addEventListener("change", () => { cb.checked ? layDraft.on.add(name) : layDraft.on.delete(name); });
-    const move = (d) => () => {
-      const j = i + d;
-      if (j < 0 || j >= layDraft.order.length) return;
-      [layDraft.order[i], layDraft.order[j]] = [layDraft.order[j], layDraft.order[i]];
-      renderLayoutCams();
-    };
-    return h("li", {}, h("label", { class: "check" }, cb, cam?.friendly_name || name),
-      h("span", { class: "grow" }),
-      h("button", { type: "button", class: "btn icon slim", title: "Move up", onclick: move(-1), disabled: i === 0 }, "↑"),
-      h("button", { type: "button", class: "btn icon slim", title: "Move down", onclick: move(1), disabled: i === layDraft.order.length - 1 }, "↓"));
+const currentView = () => prefs.views.find((v) => v.id === prefs.view) || prefs.views[0];
+
+// Cameras for the current view, in reading order.
+function layoutCameras() {
+  return Views.ordered(currentView()).map((it) => camByName(it.cam)).filter(Boolean);
+}
+
+function renderTabs() {
+  const dots = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/></svg>';
+  $("#vtabs").replaceChildren(...prefs.views.map((v) => {
+    const on = v.id === prefs.view;
+    const tab = h("button", { class: "vtab" + (on ? " on" : ""), role: "tab", "aria-selected": String(on), "data-id": v.id,
+      title: on ? "Double-click to rename" : "", onclick: () => switchView(v.id), ondblclick: () => renameView(v.id) },
+    h("span", { class: "vname" }, v.name), h("span", { class: "cnt" }, String(v.items.length)));
+    if (on) {
+      const more = h("span", { class: "vmore", role: "button", tabindex: "0", "aria-label": `Options for ${v.name}`, title: "Options" });
+      more.innerHTML = dots;
+      const open = (e) => { e.stopPropagation(); viewMenu(v.id, tab); };
+      more.addEventListener("click", open);
+      more.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") open(e); });
+      tab.append(more);
+    }
+    return tab;
   }));
 }
-$("#lay-pick").addEventListener("change", (e) => openLayoutDraft(prefs.layouts.find((l) => l.id === e.target.value) || null));
-$("#lay-new").addEventListener("click", () => { openLayoutDraft(null); $("#lay-pick").value = ""; $("#lay-name").focus(); });
-$("#lay-save").addEventListener("click", () => {
-  const name = $("#lay-name").value.trim();
-  if (!name) { $("#lay-name").focus(); return toast("Give the layout a name.", true); }
-  const cameras = layDraft.order.filter((n) => layDraft.on.has(n));
-  if (!cameras.length) return toast("Pick at least one camera.", true);
-  const cols = +$("#lay-cols").value;
-  if (layDraft.id) Object.assign(prefs.layouts.find((l) => l.id === layDraft.id), { name, cameras, cols });
-  else prefs.layouts.push({ id: Date.now().toString(36), name, cameras, cols });
-  const saved = layDraft.id || prefs.layouts[prefs.layouts.length - 1].id;
-  prefs.layout = "m:" + saved;
-  prefs.cols = cols;
-  savePrefs();
-  $("#layout-dlg").close();
-  fillLayoutPicker(); stopGrid(); buildGrid(); startGrid();
+
+function switchView(id) {
+  if (id === prefs.view) return;
+  if (state.arranging) endArrange();
+  prefs.view = id; savePrefs();
+  resetZoom();
+  renderTabs();
+  if (state.focus) closeFocus(true);
+  buildGrid(); startGrid();
+}
+
+// Saves a changed view and redraws (cameras that stay keep their streams).
+function commitView(v, { undo = true } = {}) {
+  const i = prefs.views.findIndex((x) => x.id === v.id);
+  if (undo && state.arranging) { state.undo.push(prefs.views[i]); $("#arr-undo").disabled = false; }
+  prefs.views[i] = v; savePrefs();
+  renderTabs(); buildGrid(); startGrid();
+}
+
+function addView() {
+  const n = prefs.views.length + 1;
+  const v = { id: newId(), name: `View ${n}`, auto: false, items: [] };
+  prefs.views.push(v);
+  prefs.view = v.id; savePrefs();
+  resetZoom(); renderTabs(); buildGrid(); startGrid();
+  renameView(v.id);
+}
+$("#vadd").addEventListener("click", addView);
+
+function renameView(id) {
+  const v = prefs.views.find((x) => x.id === id);
+  const tab = $(`#vtabs [data-id="${id}"]`);
+  if (!v || !tab || tab.querySelector("input")) return;
+  const input = h("input", { class: "vrename", value: v.name, maxlength: "40", "aria-label": "View name" });
+  const nameEl = tab.querySelector(".vname");
+  nameEl.replaceWith(input);
+  input.focus(); input.select();
+  let done = false;
+  const finish = (save) => {
+    if (done) return;
+    done = true;
+    const name = input.value.trim();
+    if (save && name) { v.name = name; savePrefs(); }
+    renderTabs();
+  };
+  input.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+    if (e.key === "Enter") finish(true);
+    if (e.key === "Escape") finish(false);
+  });
+  input.addEventListener("click", (e) => e.stopPropagation());
+  input.addEventListener("blur", () => finish(true));
+}
+
+function viewMenu(id, anchor) {
+  closeViewMenu();
+  const v = prefs.views.find((x) => x.id === id);
+  const item = (label, fn, cls) => h("button", { role: "menuitem", class: cls || "", onclick: () => { closeViewMenu(); fn(); } }, label);
+  const menu = h("div", { class: "menu vmenu", id: "vmenu", role: "menu" },
+    item("Rename", () => renameView(id)),
+    item("Duplicate", () => {
+      const copy = { ...structuredClone(v), id: newId(), name: `${v.name} copy`.slice(0, 40), auto: false };
+      prefs.views.splice(prefs.views.indexOf(v) + 1, 0, copy);
+      prefs.view = copy.id; savePrefs(); renderTabs(); buildGrid(); startGrid();
+    }),
+    item("Arrange cameras", () => startArrange()),
+    prefs.views.length > 1 ? h("div", { class: "menu-sep" }) : null,
+    prefs.views.length > 1 ? item("Delete view", async () => {
+      if (!(await ask(`Delete the view "${v.name}"? Your cameras aren't affected.`, "Delete", true))) return;
+      prefs.views = prefs.views.filter((x) => x.id !== id);
+      if (prefs.view === id) prefs.view = prefs.views[0].id;
+      savePrefs(); resetZoom(); renderTabs(); buildGrid(); startGrid();
+    }, "bad") : null);
+  const r = anchor.getBoundingClientRect(), live = $("#view-live").getBoundingClientRect();
+  menu.style.left = `${r.left - live.left}px`;
+  menu.style.top = `${r.bottom - live.top + 4}px`;
+  $("#view-live").append(menu);
+  menu.querySelector("button")?.focus();
+}
+function closeViewMenu() { $("#vmenu")?.remove(); }
+document.addEventListener("click", (e) => { if (!e.target.closest("#vmenu")) closeViewMenu(); });
+
+// ── camera list beside the grid ──
+function renderRail() {
+  const inView = new Set(currentView().items.map((it) => it.cam));
+  $("#rail-list").replaceChildren(...state.info.cameras.map((cam) => {
+    const li = h("li", { class: "rail-item" + (inView.has(cam.name) ? " in" : ""), "data-cam": cam.name, title: "Drag onto the grid, or click to open" },
+      h("span", { class: "state" }), h("span", { class: "rail-name" }, cam.friendly_name));
+    li.addEventListener("pointerdown", (e) => dragStart(e, { cam: cam.name, from: null }));
+    li.addEventListener("click", () => { if (!drag.moved) openFocus(cam.name); });
+    return li;
+  }));
+  paintStatus();
+}
+
+// Online / connecting / offline for every camera, from Frigate's stats and
+// the tiles' own connections. Shown on tiles, in the camera list and above the grid.
+function camStatus(name) {
+  const s = state.stats?.cameras?.[name];
+  const cam = camByName(name);
+  const t = state.tiles.get(name);
+  if (t?.rtc) return "live"; // video arriving beats any number
+  if (cam && cam.enabled === false) return "off";
+  if (s && !(s.camera_fps > 0)) return "off";
+  if (t && t.ctrl && !t.rtc) return "conn";
+  if (s) return "live";
+  return "";
+}
+function paintStatus() {
+  if (!state.info) return;
+  const count = { live: 0, conn: 0, off: 0 };
+  for (const [name, t] of state.tiles) {
+    const st = camStatus(name);
+    if (st) count[st]++;
+    t.el.classList.toggle("connecting", st === "conn" && !t.rtc && !state.gridRec);
+    t.el.classList.toggle("offline", st === "off" && !state.gridRec);
+  }
+  let online = 0;
+  for (const li of $$("#rail-list .rail-item")) {
+    const st = camStatus(li.dataset.cam);
+    li.querySelector(".state").className = "state " + st;
+    if (st && st !== "off") online++;
+  }
+  $("#rail-sum").textContent = state.stats ? `${online} of ${state.info.cameras.length} online` : "";
+  const part = (n, cls, label) => n ? h("span", { class: "vs" }, h("span", { class: "state " + cls }), `${n} ${label}`) : null;
+  $("#vsum").replaceChildren(...[part(count.live, "live", "live"), part(count.conn, "conn", "connecting"), part(count.off, "off", "offline")].filter(Boolean));
+}
+
+// ── arranging: drag, drop, swap, resize ──
+const drag = { moved: false };
+function cellAt(x, y) {
+  const r = $("#wall").getBoundingClientRect();
+  if (x < r.left || y < r.top || x >= r.right || y >= r.bottom) return null;
+  return { x: Math.floor((x - r.left) / r.width * Views.N), y: Math.floor((y - r.top) / r.height * Views.N) };
+}
+function hint(rect, label) {
+  let el = $("#drop-hint");
+  if (!rect) { el?.remove(); return; }
+  if (!el) { el = h("div", { id: "drop-hint", class: "drop-hint" }); $("#wall").append(el); }
+  el.style.gridColumn = `${rect.x + 1} / span ${rect.w}`;
+  el.style.gridRow = `${rect.y + 1} / span ${rect.h}`;
+  el.textContent = label;
+}
+const camLabel = (name) => camByName(name)?.friendly_name || name;
+// What dropping here would do: { view, rect, label } or null.
+function dropResult(cell) {
+  if (!cell) return null;
+  const v = currentView();
+  if (drag.from == null) {
+    const next = Views.drop(v, drag.cam, cell.x, cell.y);
+    if (!next) return null;
+    const it = next.items.find((x) => x.cam === drag.cam);
+    const hit = v.items.findIndex((x) => x.cam !== drag.cam && Views.itemAt({ items: [x] }, cell.x, cell.y) === 0);
+    return { view: next, rect: it, label: hit >= 0 ? `Replace ${camLabel(v.items[hit].cam)}` : camLabel(drag.cam) };
+  }
+  const it = v.items[drag.from];
+  const next = Views.move(v, drag.from, cell.x - drag.grab.x, cell.y - drag.grab.y, cell.x, cell.y);
+  if (!next) return null;
+  const hit = Views.itemAt(v, cell.x, cell.y);
+  if (hit >= 0 && hit !== drag.from) return { view: next, rect: v.items[hit], label: `Swap with ${camLabel(v.items[hit].cam)}` };
+  return { view: next, rect: next.items[drag.from], label: camLabel(it.cam) };
+}
+function dragStart(e, { cam, from }) {
+  if (e.button !== 0 || document.documentElement.hasAttribute("data-compact")) return;
+  if (from != null && !state.arranging) return;
+  if (e.pointerType === "mouse") e.preventDefault(); // no text selection while dragging
+  Object.assign(drag, { cam, from, x0: e.clientX, y0: e.clientY, moved: false, active: true, ghost: null, pointer: e.pointerId, src: e.currentTarget });
+  if (from != null) {
+    const c = cellAt(e.clientX, e.clientY), it = currentView().items[from];
+    drag.grab = c ? { x: c.x - it.x, y: c.y - it.y } : { x: 0, y: 0 };
+  }
+  e.currentTarget.setPointerCapture?.(e.pointerId);
+}
+document.addEventListener("pointermove", (e) => {
+  if (drag.active && e.pointerId === drag.pointer) {
+    if (!drag.moved && Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 5) return;
+    if (!drag.moved) {
+      drag.moved = true;
+      document.body.classList.add("dragging");
+      drag.ghost = h("div", { class: "drag-ghost" }, camByName(drag.cam)?.friendly_name || drag.cam);
+      document.body.append(drag.ghost);
+    }
+    drag.ghost.style.transform = `translate(${e.clientX + 12}px, ${e.clientY + 12}px)`;
+    const res = dropResult(cellAt(e.clientX, e.clientY));
+    hint(res?.rect || null, res?.label || "");
+    return;
+  }
+  if (resizing.active && e.pointerId === resizing.pointer) resizeMove(e);
 });
-$("#lay-delete").addEventListener("click", async () => {
-  if (!layDraft.id || !(await ask(`Delete the layout "${layDraft.name}"?`, "Delete", true))) return;
-  prefs.layouts = prefs.layouts.filter((l) => l.id !== layDraft.id);
-  if (prefs.layout === "m:" + layDraft.id) prefs.layout = "all";
-  savePrefs();
-  $("#layout-dlg").close();
-  fillLayoutPicker(); stopGrid(); buildGrid(); startGrid();
+document.addEventListener("pointerup", (e) => {
+  if (resizing.active && e.pointerId === resizing.pointer) return resizeEnd();
+  if (!drag.active || e.pointerId !== drag.pointer) return;
+  drag.active = false;
+  document.body.classList.remove("dragging");
+  drag.ghost?.remove();
+  hint(null);
+  if (!drag.moved) return;
+  const res = dropResult(cellAt(e.clientX, e.clientY));
+  if (res) commitView(res.view);
+  setTimeout(() => { drag.moved = false; }, 0); // the click that follows a drag isn't a click
+});
+document.addEventListener("pointercancel", () => {
+  drag.active = false; drag.moved = false; resizing.active = false;
+  document.body.classList.remove("dragging"); drag.ghost?.remove(); hint(null);
 });
 
+const resizing = { active: false };
+function resizeStart(e, i) {
+  e.stopPropagation(); e.preventDefault();
+  const t = $("#wall").getBoundingClientRect();
+  Object.assign(resizing, { active: true, i, pointer: e.pointerId, wall: t, next: null });
+  e.currentTarget.setPointerCapture?.(e.pointerId);
+}
+function resizeMove(e) {
+  const v = currentView(), it = v.items[resizing.i], r = resizing.wall;
+  const cw = r.width / Views.N, ch = r.height / Views.N;
+  const w = Math.ceil((e.clientX - r.left) / cw) - it.x, hh = Math.ceil((e.clientY - r.top) / ch) - it.y;
+  const next = Views.resize(v, resizing.i, w, hh);
+  if (!next) return;
+  resizing.next = next;
+  const n = next.items[resizing.i];
+  hint(n, `${n.w} × ${n.h}`);
+}
+function resizeEnd() {
+  resizing.active = false;
+  hint(null);
+  if (resizing.next) commitView(resizing.next);
+}
+
+function startArrange() {
+  if (state.focus || document.documentElement.hasAttribute("data-compact")) return;
+  state.arranging = true; state.undo = [];
+  resetZoom();
+  document.body.classList.add("arranging");
+  $("#arrange-bar").hidden = false; $("#arr-undo").disabled = true;
+  buildGrid(); startGrid();
+}
+function endArrange() {
+  state.arranging = false;
+  document.body.classList.remove("arranging");
+  $("#arrange-bar").hidden = true;
+  buildGrid(); startGrid();
+}
+$("#arrange").addEventListener("click", startArrange);
+$("#arr-done").addEventListener("click", endArrange);
+$("#arr-undo").addEventListener("click", () => {
+  const prev = state.undo.pop();
+  if (prev) commitView(prev, { undo: false });
+  $("#arr-undo").disabled = !state.undo.length;
+});
+const fillView = () => commitView(Views.fill(currentView(), state.info.cameras.map((c) => c.name)));
+$("#arr-fill").addEventListener("click", fillView);
+$("#empty-fill").addEventListener("click", fillView);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && state.arranging && !e.target.closest("input")) endArrange(); });
+
+// ── zoom: wheel, pinch, buttons; drag to look around when zoomed in ──
+const zoom = { z: 1, x: 0, y: 0, dragged: false };
+function applyZoom() {
+  const g = $("#grid").getBoundingClientRect();
+  zoom.z = Math.min(8, Math.max(1, zoom.z));
+  zoom.x = Math.min(0, Math.max(g.width - g.width * zoom.z, zoom.x));
+  zoom.y = Math.min(0, Math.max(g.height - g.height * zoom.z, zoom.y));
+  $("#wall").style.transform = zoom.z > 1.001 ? `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.z})` : "";
+  $("#grid").classList.toggle("zoomed", zoom.z > 1.001);
+  $("#zoom-val").textContent = `${Math.round(zoom.z * 100)}%`;
+}
+// Zoom to z, keeping the point under (cx, cy) where it is.
+function zoomAt(z, cx, cy) {
+  const g = $("#grid").getBoundingClientRect();
+  z = Math.min(8, Math.max(1, z));
+  const ox = cx - g.left, oy = cy - g.top, k = z / zoom.z;
+  zoom.x = ox - (ox - zoom.x) * k; zoom.y = oy - (oy - zoom.y) * k; zoom.z = z;
+  applyZoom();
+}
+const zoomCenter = (f) => { const g = $("#grid").getBoundingClientRect(); zoomAt(zoom.z * f, g.left + g.width / 2, g.top + g.height / 2); };
+function resetZoom() { zoom.z = 1; zoom.x = 0; zoom.y = 0; applyZoom(); }
+// Fill the window with one camera, without opening it.
+function zoomTo(name) {
+  const it = currentView().items.find((x) => x.cam === name);
+  if (!it) return;
+  const g = $("#grid").getBoundingClientRect();
+  const z = Math.min(Views.N / it.w, Views.N / it.h);
+  const cw = g.width / Views.N, ch = g.height / Views.N;
+  zoom.z = z;
+  zoom.x = g.width / 2 - (it.x + it.w / 2) * cw * z;
+  zoom.y = g.height / 2 - (it.y + it.h / 2) * ch * z;
+  applyZoom();
+}
+$("#zoom-in").addEventListener("click", () => zoomCenter(1.5));
+$("#zoom-out").addEventListener("click", () => zoomCenter(1 / 1.5));
+$("#zoom-fit").addEventListener("click", resetZoom);
+window.addEventListener("resize", () => applyZoom());
+$("#grid").addEventListener("wheel", (e) => {
+  if (state.focus || document.documentElement.hasAttribute("data-compact")) return;
+  e.preventDefault();
+  // A mouse wheel or a pinch zooms; a touchpad's two-finger scroll looks around.
+  const wheel = e.ctrlKey || e.deltaMode !== 0 || (e.deltaX === 0 && Math.abs(e.deltaY) >= 40);
+  if (wheel) zoomAt(zoom.z * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.002)), e.clientX, e.clientY);
+  else { zoom.x -= e.deltaX; zoom.y -= e.deltaY; applyZoom(); }
+}, { passive: false });
+const pans = new Map(); // pointers down on the grid (touch can pinch)
+$("#grid").addEventListener("pointerdown", (e) => {
+  if (state.arranging || state.focus || e.button !== 0 || e.target.closest(".zoomctl, .tile-tools, .view-empty")) return;
+  pans.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  zoom.dragged = false;
+});
+$("#grid").addEventListener("pointermove", (e) => {
+  const p = pans.get(e.pointerId);
+  if (!p) return;
+  if (pans.size === 2) { // pinch
+    const [a, b] = [...pans.values()];
+    const before = Math.hypot(a.x - b.x, a.y - b.y);
+    p.x = e.clientX; p.y = e.clientY;
+    const after = Math.hypot(a.x - b.x, a.y - b.y);
+    if (before > 0) zoomAt(zoom.z * after / before, (a.x + b.x) / 2, (a.y + b.y) / 2);
+    zoom.dragged = true;
+    return;
+  }
+  const dx = e.clientX - p.x, dy = e.clientY - p.y;
+  if (zoom.z > 1.001 && (zoom.dragged || Math.hypot(dx, dy) > 4)) {
+    if (!zoom.dragged) $("#grid").setPointerCapture?.(e.pointerId);
+    zoom.dragged = true;
+    zoom.x += dx; zoom.y += dy; p.x = e.clientX; p.y = e.clientY;
+    applyZoom();
+  }
+});
+const panEnd = (e) => { pans.delete(e.pointerId); if (zoom.dragged) setTimeout(() => { zoom.dragged = false; }, 0); };
+$("#grid").addEventListener("pointerup", panEnd);
+$("#grid").addEventListener("pointercancel", panEnd);
+document.addEventListener("keydown", (e) => {
+  if (!(e.ctrlKey || e.metaKey) || state.view !== "live" || state.focus || !state.info) return;
+  if (e.key === "=" || e.key === "+") { e.preventDefault(); zoomCenter(1.5); }
+  else if (e.key === "-") { e.preventDefault(); zoomCenter(1 / 1.5); }
+  else if (e.key === "0") { e.preventDefault(); resetZoom(); }
+});
+
+$("#s-grid-live").addEventListener("change", (e) => { prefs.gridLive = e.target.checked; savePrefs(); stopGrid(); startGrid(); });
+
 // ══ Live: grid ══════════════════════════════════════════════════════
-// Tiles scrolled out of view don't stream or fetch snapshots.
+// Tiles out of sight (zoomed in) don't fetch snapshots; their streams stay up.
 const tileObserver = new IntersectionObserver((entries) => {
   for (const e of entries) {
     const entry = [...state.tiles].find(([, t]) => t.el === e.target);
     if (!entry) continue;
     const [name, t] = entry;
     t.visible = e.isIntersecting;
-    // Scrolled out of sight closes a stream; the whole grid being hidden
-    // (a camera full size, another tab) doesn't: see parkGrid().
-    if (!t.visible && t.rtc && !state.focus && state.view === "live" && !$("#grid").hidden) { t.ctrl?.abort(); t.ctrl = null; t.rtc.close(); t.rtc = null; t.video.hidden = true; t.img.hidden = false; }
-    else if (t.visible && !state.focus && !state.gridRec && state.view === "live" && prefs.gridLive && Live.supported() && !sleptLive) startTileVideo(name, t);
+    if (t.visible && !state.focus && !state.gridRec && state.view === "live" && prefs.gridLive && Live.supported() && !sleptLive) startTileVideo(name, t);
   }
 }, { root: $("#grid"), threshold: 0.05 });
 
+function makeTile(cam) {
+  const img = h("img", { alt: "" });
+  const video = h("video", { autoplay: true, playsinline: true, muted: true, hidden: true });
+  video.muted = true;
+  const fps = h("span", { class: "fps" });
+  const dot = h("span", { class: "state" });
+  const recMsg = h("span", { class: "rec-msg" });
+  const zoomBtn = h("button", { class: "tt", "aria-label": `Zoom to ${cam.friendly_name}`, title: "Zoom to this camera",
+    onclick: (e) => { e.stopPropagation(); zoomTo(cam.name); } });
+  zoomBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M8.5 11h5M11 8.5v5"/></svg>';
+  const removeBtn = h("button", { class: "tt arr", "aria-label": `Remove ${cam.friendly_name} from this view`, title: "Remove from this view",
+    onclick: (e) => { e.stopPropagation(); const v = currentView(); commitView(Views.remove(v, v.items.findIndex((x) => x.cam === cam.name))); } });
+  removeBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  const handle = h("span", { class: "resize", "aria-hidden": "true", title: "Drag to resize" });
+  handle.addEventListener("pointerdown", (e) => resizeStart(e, currentView().items.findIndex((x) => x.cam === cam.name)));
+  // Clicking a tile opens that camera, at the same moment if we're playing
+  // back. A tile parked during grid playback starts playing instead.
+  const el = h("div", { class: "tile", "data-cam": cam.name, onclick: () => {
+    if (zoom.dragged || drag.moved || state.arranging) return;
+    if (state.gridRec && state.parked?.has(cam.name)) return promoteTile(cam.name);
+    openFocus(cam.name, 0, state.gridRec && pb.active ? pb.t : null);
+  } },
+    img, video, h("div", { class: "empty" }, "Loading…"), recMsg,
+    h("div", { class: "tile-msg conn-msg" }, h("span", { class: "spin" }), "Connecting…"),
+    h("div", { class: "tile-msg off-msg" }, "Offline"),
+    h("div", { class: "tile-tools" }, zoomBtn, removeBtn),
+    h("div", { class: "label" }, dot, cam.friendly_name, fps), handle);
+  el.addEventListener("pointerdown", (e) => {
+    if (e.target.closest(".tile-tools, .resize")) return;
+    const i = currentView().items.findIndex((x) => x.cam === cam.name);
+    dragStart(e, { cam: cam.name, from: i });
+  });
+  return { el, img, video, dot, fps, recMsg, rtc: null, ctrl: null, visible: true };
+}
+
+// Builds the current view's tiles. Cameras already on screen keep their tile
+// (and stream); tiles of cameras that left wait in `spare` for WARM_MS, so
+// switching back and forth between views doesn't reconnect.
 function buildGrid() {
   const resume = state.gridRec && pb.active ? pb.t : null;
   endGridRec();
   tileObserver.disconnect();
-  const grid = $("#grid");
-  grid.replaceChildren();
-  state.tiles.clear();
-  for (const cam of layoutCameras()) {
-    const img = h("img", { alt: "" });
-    const video = h("video", { autoplay: true, playsinline: true, muted: true, hidden: true });
-    video.muted = true;
-    const fps = h("span", { class: "fps" });
-    const dot = h("span", { class: "state" });
-    const recMsg = h("span", { class: "rec-msg" });
-    // Clicking a tile opens that camera, at the same moment if we're playing
-    // back. A tile parked during grid playback starts playing instead.
-    const el = h("div", { class: "tile", onclick: () => {
-      if (state.gridRec && state.parked?.has(cam.name)) return promoteTile(cam.name);
-      openFocus(cam.name, 0, state.gridRec && pb.active ? pb.t : null);
-    } },
-      img, video, h("div", { class: "empty" }, "Loading…"), recMsg,
-      h("div", { class: "label" }, dot, cam.friendly_name, fps));
-    grid.append(el);
-    state.tiles.set(cam.name, { el, img, video, dot, fps, recMsg, rtc: null, ctrl: null, visible: true });
-    tileObserver.observe(el);
+  const wall = $("#wall");
+  const v = currentView();
+  const old = new Map([...(state.spare || new Map()), ...state.tiles]);
+  state.tiles = new Map();
+  for (const it of Views.ordered(v)) {
+    const cam = camByName(it.cam);
+    if (!cam) continue;
+    const t = old.get(cam.name) || makeTile(cam);
+    old.delete(cam.name);
+    t.el.style.gridColumn = `${it.x + 1} / span ${it.w}`;
+    t.el.style.gridRow = `${it.y + 1} / span ${it.h}`;
+    t.el.classList.toggle("wide", it.w >= Views.N / 2);
+    state.tiles.set(cam.name, t);
   }
-  if (!state.tiles.size) grid.append(h("p", { class: "muted" }, "This layout has no cameras."));
-  applyCols();
+  wall.replaceChildren(...[...state.tiles.values()].map((t) => t.el));
+  // moving a <video> in the page pauses it: carry on playing
+  for (const t of state.tiles.values()) if (t.rtc) t.video.play().catch(() => {});
+  for (const t of state.tiles.values()) tileObserver.observe(t.el);
+  // the rest: keep warm a while, then close
+  state.spare = old;
+  clearTimeout(state.spareTimer);
+  if ([...old.values()].some((t) => t.rtc || t.ctrl)) {
+    state.spareTimer = setTimeout(() => {
+      for (const t of state.spare.values()) { t.ctrl?.abort(); t.ctrl = null; if (t.rtc) { t.rtc.close(); t.rtc = null; } }
+      state.spare.clear();
+    }, WARM_MS);
+  }
+  $("#view-empty").hidden = state.tiles.size > 0;
+  $("#grid").classList.toggle("empty", !state.tiles.size);
+  if (state.info) renderRail();
   paintTileStats();
   if (!state.focus) rescope();
   setPlaybackUi();
   if (resume) playAt(resume);
 }
-
-function applyCols() {
-  $$("#cols button").forEach((b) => b.classList.toggle("on", +b.dataset.cols === prefs.cols));
-  $("#grid").style.gridTemplateColumns = prefs.cols ? `repeat(${prefs.cols}, 1fr)` : "";
-}
-$$("#cols button").forEach((b) => b.addEventListener("click", () => { prefs.cols = +b.dataset.cols; savePrefs(); applyCols(); }));
-
-$("#grid-live").checked = prefs.gridLive;
-$("#grid-live").addEventListener("change", (e) => { prefs.gridLive = e.target.checked; savePrefs(); stopGrid(); startGrid(); });
 
 // Safe to call repeatedly (tab clicks, shortcuts): already-running tiles are left alone.
 function startGrid() {
@@ -617,6 +936,7 @@ function stopGrid() {
 async function startTileVideo(name, t) {
   if (t.ctrl || t.rtc) return; // already starting or playing
   const ctrl = t.ctrl = new AbortController();
+  paintStatus();
   const cam = camByName(name);
   // Prefer a second (usually lower-resolution) stream for the grid when configured.
   const stream = gridStream(cam);
@@ -627,7 +947,7 @@ async function startTileVideo(name, t) {
     if (t.video.readyState >= 2) Timing.tile("vid", name);
     else t.video.addEventListener("loadeddata", () => Timing.tile("vid", name), { once: true });
   } catch (_) { Timing.tile("novid", name); /* stays on snapshots */ }
-  finally { if (t.ctrl === ctrl && !t.rtc) t.ctrl = null; }
+  finally { if (t.ctrl === ctrl && !t.rtc) t.ctrl = null; paintStatus(); }
 }
 
 function attachTileRtc(t, rtc) {
@@ -665,12 +985,13 @@ function paintTileStats() {
   for (const [name, t] of state.tiles) {
     const s = state.stats?.cameras?.[name];
     const camFps = s?.camera_fps ?? 0;
-    t.dot.className = "state " + (s ? (camFps > 0 ? "live" : "off") : "");
+    t.dot.className = "state " + camStatus(name);
     t.fps.title = s ? `Frigate is receiving ${camFps.toFixed(1)} fps on the detect stream` : "";
     if (state.gridRec) t.fps.textContent = "recording";
     else if (t.rtc) t.fps.textContent = t.liveFps != null ? `${t.rtc.kind === "webrtc" ? "WebRTC" : "MSE"} · ${Math.round(t.liveFps)} fps` : (t.rtc.kind === "webrtc" ? "WebRTC" : "MSE");
     else t.fps.textContent = s ? "snapshot" : "";
   }
+  paintStatus();
 }
 
 // Frames actually shown per second, from the video element's own counters.
@@ -835,7 +1156,7 @@ async function openFocus(name, streamIdx = 0, at = null) {
   state.focus = { cam: name, streamIdx, rtc: null, liveCtrl: null, timer: null, mode: "live" };
   $("#grid").hidden = true;
   $("#focus").hidden = false;
-  $("#live-tools").hidden = true;
+  $("#view-live").classList.add("in-focus");
   $("#focus-name").textContent = cam.friendly_name;
 
   const sel = $("#focus-stream");
@@ -1256,10 +1577,10 @@ function closeFocus(silent) {
   state.focus = null;
   focusVideo.srcObject = null;
   $("#focus").hidden = true;
+  $("#view-live").classList.remove("in-focus");
   $("#grid").hidden = false;
   if (silent) return;
   // Back to the grid: keep watching the same moment on every camera.
-  $("#live-tools").hidden = false;
   rescope();
   setPlaybackUi();
   if (giveBack) {

@@ -1,17 +1,54 @@
 ---
 title: Live view
-description: The live camera grid — layouts, camera groups, columns, substreams, and how Chismoso picks between WebRTC, MSE and snapshots.
+description: The live camera grid — views (tabs), arranging cameras, zoom, camera status, substreams, and how Chismoso picks between WebRTC, MSE and snapshots.
 ---
 
 The **Live** tab opens on a grid of your cameras. Each tile shows the camera's name, a status dot, and what you're actually seeing in the corner: `WebRTC · 25 fps`, `MSE · 15 fps`, `snapshot`, or `recording` during playback.
 
-## Snapshots or live video
+## Views
 
-By default the grid shows **snapshots**, refreshed every couple of seconds. They're light on your server and on your network, which matters with many cameras.
+The tabs above the grid are **views**: walls of cameras you arrange yourself, kept on this computer. **All cameras** shows every camera, arranged for you, and follows Frigate's list until you change it. The first time you open this version, Frigate's `camera_groups` and any layouts you made before become views too.
 
-Tick **Live grid** in the toolbar to stream every tile as live video instead. Your choice is remembered.
+- **+** after the last tab makes a new, empty view. Type its name and press Enter.
+- Double-click a tab to rename it. The **⋯** button on the open tab can also duplicate, arrange or delete it.
+- The number on each tab is how many cameras it has.
 
-Either way, tiles you've scrolled out of view don't stream or fetch snapshots, and live streams close 30 seconds after you minimize or hide the window. They reopen when you come back. When you open one camera full size or switch to another tab, the grid's live streams stay connected for two minutes, so going back to the grid is instant; after that they close until you return.
+A view always fills the window. Switching between views is instant for cameras that are in both: their video keeps playing.
+
+## Arranging cameras
+
+The list on the left has every camera. Drag one onto the grid to place it: in an empty spot it takes the usual size, and on another camera it replaces it there.
+
+Press **Arrange** (or **⋯ → Arrange cameras**) to change a view:
+
+- Drag a camera to move it. Drop it on another camera to swap the two.
+- Pull a camera's blue corner to make it bigger or smaller. It stops where it meets another camera.
+- **×** removes a camera from the view (not from Frigate).
+- **Add the other cameras** fills the free space with cameras the view doesn't have yet.
+- **Undo** steps back, and **Done** (or Esc) finishes.
+
+On a phone, or a window narrower than 700 pixels, views show their cameras two per row, in the order they're arranged, with bigger cameras across the whole width. Arrange views on a larger window.
+
+## Zoom
+
+Look closer at part of the wall without opening a camera:
+
+- Turn the mouse wheel, or pinch on a touchpad or touch screen, to zoom in where the pointer is.
+- When zoomed in, drag (or scroll with two fingers) to look around.
+- The magnifier on a camera zooms straight to it.
+- The buttons in the corner zoom in and out, and **Fit** (or Ctrl+0) shows the whole view again.
+
+Clicking a camera still opens it full size.
+
+## Online, connecting, offline
+
+A coloured dot shows each camera's state, on its tile and in the camera list: green is live, amber is connecting, red is offline (Frigate isn't getting video from it). A camera that's connecting shows its last picture, dimmed, until the video starts. Above the grid, a summary counts how many cameras in the view are in each state, and the list says how many are online in all.
+
+## Live video or pictures
+
+The grid shows **live video**. On a slow connection, turn off **Settings → Appearance → Live video in the grid** and it shows pictures refreshed every couple of seconds instead.
+
+Live streams close 30 seconds after you minimize or hide the window, and reopen when you come back. When you open one camera full size, switch to another tab of the app, or switch views, the grid's streams stay connected for two minutes, so going back is instant; after that they close until you return.
 
 ## How live video is delivered
 
@@ -24,18 +61,6 @@ Chismoso tries three methods in order, so something always shows:
 | **Snapshots** | Last resort | Nothing. About one frame per second |
 
 The frame rate on each tile is **measured from the video itself**. It isn't Frigate's `camera_fps`, which is the rate of the *detect* stream (often 5 fps) and doesn't limit live view. Hover the rate to see Frigate's number.
-
-## Layouts and camera groups
-
-The **layout** picker at the top of the Live tab chooses which cameras are in the grid:
-
-- **All cameras**, in Frigate's order.
-- **Frigate camera groups**: any `camera_groups` defined in your Frigate config appear as they are. To change them, edit the config.
-- **My layouts**: your own selections, kept on this computer.
-
-To make a layout, press the pencil button next to the picker, give it a name, tick the cameras you want and use the arrows to put them in order, then **Save**. The same dialog edits or deletes an existing layout.
-
-**Auto / 1 / 2 / 3 / 4** sets the number of columns. **Auto** fits the grid to the window.
 
 ## Substreams
 

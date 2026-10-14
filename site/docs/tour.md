@@ -12,7 +12,7 @@ Once you're signed in, Chismoso has four tabs along the top. You can switch betw
 
 Where you'll spend most of your time. It shows a **grid** of cameras with the **recordings timeline** underneath.
 
-- The **layout** picker at the top chooses which cameras appear: all of them, one of Frigate's camera groups, or a layout of your own. The pencil button next to it edits layouts.
+- The **tabs** above the grid are views: walls of cameras you arrange by dragging them from the camera list on the left. **+** makes a new one, and the mouse wheel zooms in without opening a camera. See [Live view](live-view.md).
 - **Auto / 1 / 2 / 3 / 4** sets the number of columns.
 - **Live grid** switches the tiles from snapshots to live video.
 - Click a tile to open that camera full size: the [camera view](camera-view.md).

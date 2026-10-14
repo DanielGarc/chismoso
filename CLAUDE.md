@@ -32,6 +32,7 @@ A lightweight client for Frigate NVR: Rust + Tauri 2, plain HTML/CSS/JS UI
 cd src-tauri && cargo test
 sh dev/cross-check.sh                         # clippy -D warnings: Linux, Windows, Android
 for f in ui/*.js; do node --check "$f"; done
+node ui/views.js --test                       # view layout logic (tabs above the grid)
 ```
 
 CI (`.github/workflows/check.yml`) repeats these and adds macOS and iOS.
