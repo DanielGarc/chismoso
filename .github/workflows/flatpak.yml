@@ -1,0 +1,47 @@
+# Builds the Flatpak (flatpak/org.caprichosos.chismoso.yml) the way Flathub
+# does: from source, offline, in the GNOME runtime. Runs Flathub's linter and
+# keeps a single-file installer (chismoso.flatpak) as the run's artifact:
+#   flatpak install --user chismoso-x86_64.flatpak
+# Actions -> "Flatpak" -> Run workflow (any branch).
+name: Flatpak
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  flatpak:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: List every crate for the offline build
+        run: |
+          pip install --quiet --break-system-packages aiohttp tomlkit 2>/dev/null || pip install --quiet aiohttp tomlkit
+          sh flatpak/cargo-sources.sh
+
+      - name: Lint the metadata
+        run: |
+          flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/org.caprichosos.chismoso.yml || true
+          flatpak run --command=flatpak-builder-lint org.flatpak.Builder appstream flatpak/org.caprichosos.chismoso.metainfo.xml
+          desktop-file-validate flatpak/org.caprichosos.chismoso.desktop
+
+      - uses: flathub-infra/flatpak-github-actions/flatpak-builder@master
+        with:
+          manifest-path: flatpak/org.caprichosos.chismoso.yml
+          bundle: chismoso-${{ matrix.arch }}.flatpak
+          arch: ${{ matrix.arch }}
+          cache-key: flatpak-${{ matrix.arch }}-${{ hashFiles('src-tauri/Cargo.lock') }}

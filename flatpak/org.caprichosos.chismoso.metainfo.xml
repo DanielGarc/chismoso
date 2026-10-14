@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.caprichosos.chismoso</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Chismoso</name>
+  <summary>Lightweight client for Frigate NVR</summary>
+  <developer id="org.caprichosos">
+    <name>caprichosos.org</name>
+  </developer>
+  <description>
+    <p>
+      Chismoso is a small desktop app for Frigate, the open-source network video recorder.
+      It shows your cameras live, lets you scrub through recordings on a timeline, and turns
+      hours of footage into short timelapses.
+    </p>
+    <ul>
+      <li>Live grid of your cameras, arranged in views you build by dragging cameras onto a wall that fills the window</li>
+      <li>Zoom into the grid without opening a camera; see at a glance which cameras are live, connecting or offline</li>
+      <li>A timeline of recordings, alerts and detections, with synchronized playback of every camera in a view</li>
+      <li>Clips and timelapses of one or several cameras, made by your Frigate server</li>
+      <li>Desktop notifications for alerts, with a picture</li>
+      <li>Pan, tilt and zoom for PTZ cameras</li>
+      <li>Keep me signed in without storing your password</li>
+    </ul>
+    <p>
+      Chismoso talks only to your own Frigate server. It is not affiliated with the Frigate project.
+    </p>
+  </description>
+  <launchable type="desktop-id">org.caprichosos.chismoso.desktop</launchable>
+  <url type="homepage">https://chismoso.caprichosos.org</url>
+  <url type="bugtracker">https://github.com/DanielGarc/chismoso/issues</url>
+  <url type="help">https://chismoso.caprichosos.org/docs/</url>
+  <url type="vcs-browser">https://github.com/DanielGarc/chismoso</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Live view of several cameras with the recordings timeline</caption>
+      <image>https://chismoso.caprichosos.org/img/screenshot.jpg</image>
+    </screenshot>
+    <screenshot>
+      <caption>Alert notification with a picture from the camera</caption>
+      <image>https://chismoso.caprichosos.org/img/notification.jpg</image>
+    </screenshot>
+  </screenshots>
+  <branding>
+    <color type="primary" scheme_preference="light">#93c5fd</color>
+    <color type="primary" scheme_preference="dark">#16203a</color>
+  </branding>
+  <content_rating type="oars-1.1"/>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
+  <requires>
+    <display_length compare="ge">360</display_length>
+    <internet>always</internet>
+  </requires>
+  <releases>
+    <release version="0.7.0" date="2026-10-14">
+      <description>
+        <ul>
+          <li>Views: tabs above the grid; drag cameras anywhere on the grid to place, swap or resize them</li>
+          <li>Zoom into the grid with the mouse wheel or a pinch</li>
+          <li>Every camera shows whether it is live, connecting or offline</li>
+          <li>Much faster start, and every picture shows at once</li>
+          <li>Move and zoom PTZ cameras</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+</component>

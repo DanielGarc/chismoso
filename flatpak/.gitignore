@@ -1,0 +1,7 @@
+build-dir/
+repo/
+.cache/
+.flatpak-builder/
+cargo-sources.json
+*.flatpak
+flathub/

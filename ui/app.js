@@ -931,7 +931,7 @@ async function startTileVideo(name, t) {
     attachTileRtc(t, rtc);
     if (t.video.readyState >= 2) Timing.tile("vid", name);
     else t.video.addEventListener("loadeddata", () => Timing.tile("vid", name), { once: true });
-  } catch (_) { Timing.tile("novid", name); /* stays on snapshots */ }
+  } catch (e) { Timing.t[`novid_why:${name}`] = String(e?.message || e).slice(0, 200); Timing.tile("novid", name); /* stays on snapshots */ }
   finally { if (t.ctrl === ctrl && !t.rtc) t.ctrl = null; paintStatus(); }
 }
 

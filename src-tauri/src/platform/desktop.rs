@@ -4,18 +4,28 @@ use super::{Decoding, Features};
 use std::path::PathBuf;
 use tauri::{AppHandle, Builder, Runtime};
 
-pub const FEATURES: Features = Features {
-    form: "desktop",
-    window_controls: true,
-    window_fullscreen: true,
-    open_files: true,
-    choose_folder: true,
-    keyboard: true,
-    background_alerts: true,
-    self_update: true,
-    share_sheet: cfg!(any(target_os = "macos", target_os = "windows")),
-    copy_files: true,
-};
+pub fn features() -> Features {
+    // A Flatpak (Flathub) copy is updated by Flathub, not by the app, and its
+    // sandbox has no clipboard helper (wl-copy / xclip) for copying files.
+    let flatpak = in_flatpak();
+    Features {
+        form: "desktop",
+        window_controls: true,
+        window_fullscreen: true,
+        open_files: true,
+        choose_folder: true,
+        keyboard: true,
+        background_alerts: true,
+        self_update: !flatpak,
+        share_sheet: cfg!(any(target_os = "macos", target_os = "windows")),
+        copy_files: !flatpak,
+    }
+}
+
+/// Running inside a Flatpak sandbox (flatpak sets FLATPAK_ID and /.flatpak-info).
+fn in_flatpak() -> bool {
+    cfg!(target_os = "linux") && (std::env::var_os("FLATPAK_ID").is_some() || std::path::Path::new("/.flatpak-info").exists())
+}
 
 /// Before the window exists.
 pub fn init() {

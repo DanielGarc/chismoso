@@ -66,6 +66,11 @@ tile showing. Run it before and after a change that could affect loading.
   It builds every platform as a pre-release under the rolling `dev` tag, with
   version `<next patch>-<run number>` set only inside the build. Installed
   copies and the website never see it.
+- Flatpak: `flatpak/` (manifest, desktop file, metainfo). `sh flatpak/build.sh`
+  builds and installs it locally; Actions → "Flatpak" builds it like Flathub
+  does; `sh flatpak/make-flathub.sh vX.Y.Z` makes the files for the Flathub
+  repo. Add each release to the `<releases>` list in the metainfo. Inside a
+  Flatpak, `platform::features()` turns off self-update and copying files.
 - The website and docs are in `site/` (Markdown in `site/docs/`, built by
   `site/build.mjs`, deployed by `pages.yml`). When a feature changes, update
   its docs page in the same commit.

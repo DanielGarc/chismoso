@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Chismoso
+GenericName=Camera viewer
+Comment=Watch, scrub and timelapse your Frigate NVR cameras
+Exec=chismoso
+Icon=org.caprichosos.chismoso
+Terminal=false
+Categories=AudioVideo;Video;
+Keywords=Frigate;NVR;camera;CCTV;security;timelapse;
+StartupWMClass=chismoso
+StartupNotify=true

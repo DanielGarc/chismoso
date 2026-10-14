@@ -63,6 +63,18 @@ sudo apt install gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0
 sudo dnf install gstreamer1-plugins-good gstreamer1-plugins-bad-free gstreamer1-libav
 ```
 
+### Flatpak
+
+A Flatpak is on its way to Flathub. Until then you can build it yourself from the source, with `flatpak` and `flatpak-builder` installed:
+
+```sh
+git clone https://github.com/DanielGarc/chismoso.git && cd chismoso
+sh flatpak/build.sh
+flatpak run org.caprichosos.chismoso
+```
+
+The Flatpak copy is updated with `flatpak update` (or your software center) instead of by the app itself. It can save clips and timelapses inside your **Videos** folder, and it can't copy a clip to the clipboard; use **Share** or open the folder instead.
+
 ### Hardware video decoding
 
 On Linux the web view decodes video through GStreamer, which uses the processor unless a hardware plugin is installed. With several cameras playing, hardware decoding cuts CPU use a lot. The [Load screen](load.md#this-computer) tells you which one you have. To add it:

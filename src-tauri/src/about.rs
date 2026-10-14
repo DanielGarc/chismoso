@@ -40,7 +40,7 @@ pub fn info() -> Info {
         tauri: tauri::VERSION,
         debug: cfg!(debug_assertions),
         download_page: DOWNLOAD_PAGE,
-        features: crate::platform::FEATURES,
+        features: crate::platform::features(),
     }
 }
 

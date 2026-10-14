@@ -10,18 +10,20 @@ use super::{Decoding, Features};
 use tauri::{AppHandle, Builder, Manager, Runtime};
 use tauri_plugin_notification::NotificationExt;
 
-pub const FEATURES: Features = Features {
-    form: "mobile",
-    window_controls: false,
-    window_fullscreen: false,
-    open_files: false,
-    choose_folder: false,
-    keyboard: false,
-    background_alerts: false,
-    self_update: false,
-    share_sheet: false,
-    copy_files: false,
-};
+pub fn features() -> Features {
+    Features {
+        form: "mobile",
+        window_controls: false,
+        window_fullscreen: false,
+        open_files: false,
+        choose_folder: false,
+        keyboard: false,
+        background_alerts: false,
+        self_update: false,
+        share_sheet: false,
+        copy_files: false,
+    }
+}
 
 pub fn init() {}
 
