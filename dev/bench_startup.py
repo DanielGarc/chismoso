@@ -53,14 +53,15 @@ def one_run(binary, port, tok, prefs, timeout):
             "url": f"https://127.0.0.1:{port}", "user": "admin", "token": tok, "self_signed": True, "pinned": None}))
         env = dict(os.environ, XDG_DATA_HOME=str(data), XDG_CONFIG_HOME=str(data / "config"),
                    XDG_CACHE_HOME=str(data / "cache"), CHISMOSO_TIMING="exit",
-                   CHISMOSO_BENCH_PREFS=json.dumps(prefs), WEBKIT_DISABLE_COMPOSITING_MODE="1")
+                   CHISMOSO_BENCH_PREFS=json.dumps(prefs))
         cmd = ["xvfb-run", "-a", "-s", "-screen 0 1440x900x24", str(binary)]
-        p = subprocess.Popen(cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        # xvfb-run sends the app's stderr to stdout
+        p = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         try:
-            out = p.communicate(timeout=timeout)[1]
+            out = p.communicate(timeout=timeout)[0]
         except subprocess.TimeoutExpired:
             p.kill()
-            out = p.communicate()[1]
+            out = p.communicate()[0]
             print("timed out; app output:\n" + out[-1500:], file=sys.stderr)
             return None
         for line in out.splitlines():
