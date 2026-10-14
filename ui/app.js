@@ -29,6 +29,30 @@ const prefs = Object.assign({
 if ("insecure" in prefs) { prefs.selfSigned = !!prefs.insecure; delete prefs.insecure; } // older versions
 const savePrefs = () => localStorage.setItem("prefs", JSON.stringify(prefs));
 
+// Start-up timing: milliseconds since the page started, for each step up to
+// every tile showing a picture (and video, with a live grid). Sent once per
+// sign-in to the backend, which prints it only when CHISMOSO_TIMING is set
+// (dev/bench-startup.sh); otherwise it's ignored.
+const Timing = {
+  t: {}, sent: false,
+  mark(k) { if (!(k in this.t)) this.t[k] = Math.round(performance.now()); },
+  tile(kind, name) { this.mark(`${kind}:${name}`); this.check(); },
+  check() {
+    if (this.sent || !state.tiles.size) return;
+    const names = [...state.tiles.keys()];
+    const pic = names.every((n) => `img:${n}` in this.t || `vid:${n}` in this.t);
+    if (pic) this.mark("all_pictures");
+    const live = !(prefs.gridLive && Live.supported()) || names.every((n) => `vid:${n}` in this.t);
+    if (pic && live) this.send();
+  },
+  send() {
+    if (this.sent) return;
+    this.sent = true;
+    invoke("timing_report", { marks: { ...this.t, tiles: state.tiles.size, grid_live: !!prefs.gridLive } }).catch(() => {});
+  },
+};
+Timing.mark("app_js");
+
 const state = {
   info: null,         // { base_url, version, role, cameras, groups }
   stats: null,
@@ -107,10 +131,12 @@ async function connect({ trustNew = false } = {}) {
   const selfSigned = !!(prefs.trusted?.[prefs.url] || prefs.pins[prefs.url] || (prefs.selfSigned && !prefs.trusted));
   savePrefs();
   try {
+    Timing.mark("signin_start");
     state.info = await invoke("connect", {
       url: prefs.url, user: prefs.user, password: $("#f-pass").value,
       selfSigned, pinned: selfSigned ? prefs.pins[prefs.url] ?? null : null, keep: prefs.keep,
     });
+    Timing.mark("signed_in");
     if (state.info.cert_fingerprint) { prefs.pins[prefs.url] = state.info.cert_fingerprint; savePrefs(); }
     $("#f-pass").value = "";
     enterApp();
@@ -142,8 +168,10 @@ async function resumeSession() {
   const btn = $("#login-btn"), err = $("#login-error");
   btn.disabled = true; btn.textContent = "Signing in…"; err.hidden = true;
   try {
+    Timing.mark("signin_start");
     const kept = await invoke("resume");
-    if (!kept) return false;
+    if (!kept) { delete Timing.t.signin_start; return false; }
+    Timing.mark("signed_in");
     prefs.url = kept.url; prefs.user = kept.user; savePrefs();
     $("#f-url").value = kept.url; $("#f-user").value = kept.user;
     state.info = kept.info;
@@ -160,7 +188,8 @@ async function resumeSession() {
     btn.disabled = false; btn.textContent = "Connect";
   }
 }
-if (prefs.keep) resumeSession();
+// Signs in with the session "Keep me signed in" saved, if there is one.
+invoke("bench_prefs").catch(() => null).then((p) => { if (p) Object.assign(prefs, p); resumeSession(); });
 
 $("#login-form").addEventListener("input", () => { $("#cert-box").hidden = true; $("#login-btn").hidden = false; });
 $("#login-form").addEventListener("submit", (ev) => { ev.preventDefault(); connect(); });
@@ -186,6 +215,8 @@ async function enterApp() {
   setupNotifications();
   fillLayoutPicker();
   buildGrid();
+  Timing.mark("grid");
+  setTimeout(() => Timing.send(), 30000); // report even if some cameras never show up
   pollStats();
   clearInterval(state.statsTimer);
   state.statsTimer = setInterval(pollStats, 10000);
@@ -494,6 +525,8 @@ async function startTileVideo(name, t) {
     const rtc = await Live.play(t.video, stream, { signal: ctrl.signal });
     if (ctrl.signal.aborted) return rtc.close();
     attachTileRtc(t, rtc);
+    if (t.video.readyState >= 2) Timing.tile("vid", name);
+    else t.video.addEventListener("loadeddata", () => Timing.tile("vid", name), { once: true });
   } catch (_) { /* stays on snapshots */ }
   finally { if (t.ctrl === ctrl && !t.rtc) t.ctrl = null; }
 }
@@ -519,7 +552,7 @@ async function refreshSnapshots() {
     const px = Math.min(1080, Math.max(180, Math.ceil(t.el.clientHeight * (window.devicePixelRatio || 1) / 90) * 90));
     const next = new Image();
     const done = setTimeout(res, 8000); // a hung request must not stall the whole grid
-    next.onload = () => { clearTimeout(done); t.img.src = next.src; t.el.querySelector(".empty").hidden = true; res(); };
+    next.onload = () => { clearTimeout(done); t.img.src = next.src; t.el.querySelector(".empty").hidden = true; Timing.tile("img", name); res(); };
     next.onerror = () => { clearTimeout(done); t.el.querySelector(".empty").textContent = "No image"; res(); };
     next.src = media(`/api/${encodeURIComponent(name)}/latest.jpg?h=${px}&quality=70&t=${Date.now()}`);
   })));

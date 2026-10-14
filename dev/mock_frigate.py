@@ -57,11 +57,27 @@ state = {"exports": {}, "requests": [], "config": CONFIG_YAML, "pcs": set(),
          "switches": {c: {"detect": True, "record": True, "snapshots": c != "garage"} for c in CAMERAS},
          "viewers": {}}
 REQUIRE_AUTH = False
+LATENCY = 0.0       # --latency: added to every HTTP request (a server far away)
+STREAM_START = 0.0  # --stream-start: go2rtc connecting to a camera that nobody is watching yet
 
 
 def log(kind, **kw):
     state["requests"].append({"kind": kind, **kw})
     print(kind, json.dumps(kw)[:300], flush=True)
+
+
+@web.middleware
+async def latency(request, handler):
+    if LATENCY and not request.path.startswith("/debug/"):
+        await asyncio.sleep(LATENCY)
+    return await handler(request)
+
+
+async def stream_start(src):
+    """Like go2rtc: a stream nobody is watching has to connect to the camera first."""
+    base = src.split("_sub")[0]
+    if STREAM_START and not state["viewers"].get(base):
+        await asyncio.sleep(STREAM_START)
 
 
 @web.middleware
@@ -311,15 +327,19 @@ async def webrtc(request):
     log("webrtc", src=src)
     if src.split("_sub")[0] not in CAMERAS or src == PTZ_CAM:
         return web.json_response({"error": f"stream not found: {src}"}, status=404)
+    await stream_start(src)
     pc = RTCPeerConnection()
     state["pcs"].add(pc)
+    base = src.split("_sub")[0]
+    state["viewers"][base] = state["viewers"].get(base, 0) + 1
 
     @pc.on("connectionstatechange")
     async def _():
         print("webrtc state", src, pc.connectionState, flush=True)
-        if pc.connectionState in ("failed", "closed"):
-            await pc.close()
+        if pc.connectionState in ("failed", "closed") and pc in state["pcs"]:
             state["pcs"].discard(pc)
+            state["viewers"][base] = max(0, state["viewers"].get(base, 1) - 1)
+            await pc.close()
 
     player = MediaPlayer(str(MEDIA / "sample.mp4"), loop=True)
     await pc.setRemoteDescription(RTCSessionDescription(sdp=offer["sdp"], type=offer["type"]))
@@ -360,6 +380,7 @@ async def mse_ws(request):
     if msg.get("type") != "mse" or src == PTZ_CAM:
         await ws.close()
         return ws
+    await stream_start(src)
     init, frags = load_fragments()
     state["viewers"][src] = state["viewers"].get(src, 0) + 1
     await ws.send_str(json.dumps({"type": "mse", "value": 'video/mp4; codecs="avc1.42E01F"'}))
@@ -547,15 +568,19 @@ async def debug_requests(_):
 
 
 def main():
-    global REQUIRE_AUTH
+    global REQUIRE_AUTH, LATENCY, STREAM_START
     ap = argparse.ArgumentParser()
     ap.add_argument("--tls", action="store_true", help="serve HTTPS with a self-signed cert and require login")
     ap.add_argument("--port", type=int)
     ap.add_argument("--host", default="127.0.0.1", help="0.0.0.0 to reach it from a phone on the same network")
+    ap.add_argument("--latency", type=int, default=0, metavar="MS", help="delay every request (a server far away)")
+    ap.add_argument("--stream-start", type=int, default=0, metavar="MS",
+                    help="extra delay before a live stream nobody is watching starts (go2rtc dialing the camera)")
     a = ap.parse_args()
     REQUIRE_AUTH = a.tls
+    LATENCY, STREAM_START = a.latency / 1000, a.stream_start / 1000
 
-    app = web.Application(middlewares=[auth])
+    app = web.Application(middlewares=[latency, auth])
     r = app.router
     r.add_post("/api/login", login)
     r.add_get("/api/version", version)

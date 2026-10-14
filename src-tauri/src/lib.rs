@@ -26,6 +26,7 @@ use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let _ = commands::STARTED.set(std::time::Instant::now());
     tls::init();
     platform::init();
     let builder = platform::plugins(tauri::Builder::default());
@@ -40,6 +41,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::connect,
+            commands::timing_report,
+            commands::bench_prefs,
             commands::resume,
             commands::share_files,
             commands::copy_files,

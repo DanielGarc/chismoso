@@ -236,6 +236,29 @@ pub(crate) fn app_info() -> about::Info {
     about::info()
 }
 
+/// When the app process started (for start-up timing, see `timing_report`).
+pub(crate) static STARTED: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+
+/// Start-up timing from the UI (dev/bench-startup.sh). Silent unless the
+/// CHISMOSO_TIMING environment variable is set; "exit" also quits afterwards.
+#[tauri::command]
+pub(crate) fn timing_report(marks: serde_json::Value) {
+    let Some(mode) = std::env::var_os("CHISMOSO_TIMING") else { return };
+    let process_ms = STARTED.get().map(|t| t.elapsed().as_millis()).unwrap_or(0);
+    eprintln!("CHISMOSO_TIMING {{\"process_ms\":{process_ms},\"marks\":{marks}}}");
+    if mode == "exit" {
+        std::process::exit(0);
+    }
+}
+
+/// Settings a start-up benchmark run starts with (CHISMOSO_BENCH_PREFS, JSON),
+/// only while timing. None otherwise.
+#[tauri::command]
+pub(crate) fn bench_prefs() -> Option<serde_json::Value> {
+    std::env::var_os("CHISMOSO_TIMING")?;
+    serde_json::from_str(&std::env::var("CHISMOSO_BENCH_PREFS").ok()?).ok()
+}
+
 /// Hardware or software video decoding on this computer (Load screen).
 #[tauri::command]
 pub(crate) fn video_decoding() -> platform::Decoding {

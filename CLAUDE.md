@@ -43,6 +43,13 @@ with gaps, review items, /ws pushes, exports, config). Set it up with
 `sh dev/make-mock-media.sh`, then `python3 dev/mock_frigate.py` (or `--tls`
 for HTTPS + login admin/password). `GET /debug/review?camera=doorbell` pushes
 a live alert; `GET /debug/requests` lists what the app asked for.
+`--latency MS` and `--stream-start MS` make it behave like a far-away server
+and cameras that take a while to start streaming.
+
+Start-up speed: `python3 dev/bench_startup.py` (Linux, needs `xvfb-run` and a
+release build) launches the real app against the mock several times with a
+kept session and prints the median time to sign-in, first picture and every
+tile showing. Run it before and after a change that could affect loading.
 
 ## Naming, versions, releases
 
