@@ -185,6 +185,6 @@ The version lives in `src-tauri/Cargo.toml` (Tauri reads it from there). Builds 
 
 The name is defined once in `src-tauri/src/about.rs` (`NAME`) plus `productName` in `tauri.conf.json`; the UI picks it up from there.
 
-## Not yet included
+## Roadmap
 
-- Two-way talk (the doorbell intercom). go2rtc supports it, so it's a natural next step.
+What's being worked on, what's next and what's deliberately left out: [chismoso.caprichosos.org/docs/roadmap.html](https://chismoso.caprichosos.org/docs/roadmap.html). Ideas and votes are welcome as [issues](https://github.com/DanielGarc/chismoso/issues).

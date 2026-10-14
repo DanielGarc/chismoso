@@ -125,6 +125,7 @@ ${body}
         <li><a href="${root}docs/index.html">Docs</a></li>
         <li><a href="${root}download.html">Download</a></li>
         <li><a href="${root}docs/faq.html">FAQ</a></li>
+        <li><a href="${root}docs/roadmap.html">Roadmap</a></li>
         <li><a href="${GH}">Source code</a></li>
         <li><a href="${GH}/releases">Releases</a></li>
         <li><a href="${GH}/issues">Report a problem</a></li>

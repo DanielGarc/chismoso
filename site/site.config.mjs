@@ -38,6 +38,7 @@ export default {
       pages: ['live-video-setup', 'command-line', 'keyboard-shortcuts', 'privacy-and-security', 'updates', 'phones'],
     },
     { title: 'Help', pages: ['faq', 'troubleshooting'] },
+    { title: 'Project', pages: ['roadmap'] },
     { title: 'Contributing', pages: ['building', 'contributing'] },
   ],
 };

@@ -46,7 +46,7 @@ Yes, over a VPN or any route that reaches your Frigate server. Live video will u
 
 ### Does it work with several Frigate servers?
 
-One at a time. **Sign out** from the server menu and sign in to another. Pinned certificates and load history are kept per server.
+One at a time for now. **Sign out** from the server menu and sign in to another. Pinned certificates and load history are kept per server. Signing in to several at once is on the [roadmap](roadmap.md#several-servers).
 
 ### Is there an Android or iOS app?
 
