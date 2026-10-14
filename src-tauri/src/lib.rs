@@ -16,7 +16,7 @@ pub mod frigate;
 pub mod jobs;
 mod media;
 pub mod metrics;
-mod mse;
+pub mod mse;
 mod notify;
 mod session;
 pub mod platform;
@@ -45,6 +45,8 @@ pub fn run() {
             commands::copy_files,
             commands::save_snapshot,
             commands::local_export,
+            commands::ptz_info,
+            commands::ptz,
             commands::disconnect,
             commands::cameras,
             commands::webrtc_answer,

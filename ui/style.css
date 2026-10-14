@@ -467,3 +467,17 @@ html[data-compact] .update-row .grow { flex-basis: 100%; height: 0; }
 .share-toast { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; max-width: min(640px, calc(100vw - 32px)); }
 .share-acts { display: flex; gap: 12px; flex-wrap: wrap; }
 .btn-ic { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; vertical-align: -3px; margin-right: 6px; }
+
+/* PTZ controls: over the video, so fixed light-on-dark like the other overlays */
+.ptz { position: absolute; right: 12px; bottom: 12px; display: flex; align-items: flex-end; gap: 10px; opacity: .6; transition: opacity .15s; z-index: 2; }
+.stage:hover .ptz, .ptz:focus-within, html.touch .ptz { opacity: 1; }
+.ptz-pad { display: grid; grid-template-columns: repeat(3, 34px); grid-template-rows: repeat(3, 34px); }
+.ptz-pad .up { grid-area: 1 / 2; } .ptz-pad .left { grid-area: 2 / 1; } .ptz-pad .right { grid-area: 2 / 3; } .ptz-pad .down { grid-area: 3 / 2; }
+.ptz-zoom { display: flex; flex-direction: column; gap: 6px; }
+.ptz-b { width: 34px; height: 34px; border-radius: 50%; border: 1px solid #ffffff33; background: #000b; color: #fff; display: grid; place-items: center; padding: 0; cursor: pointer; touch-action: none; user-select: none; }
+.ptz-b:hover { background: #000e; border-color: #ffffff66; }
+.ptz-b:active { background: var(--accent); border-color: var(--accent); }
+.ptz-b svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.ptz-preset { background: #000b; color: #fff; border: 1px solid #ffffff33; border-radius: 8px; padding: 6px 8px; font-size: 12.5px; max-width: 140px; }
+html.touch .ptz-pad { grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(3, 44px); }
+html.touch .ptz-b { width: 44px; height: 44px; }

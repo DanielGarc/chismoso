@@ -8,7 +8,8 @@ without real cameras.
 
 It implements the endpoints Chismoso uses: login, config, stats,
 snapshots, WebRTC (a real peer streaming a test video), exports with job
-progress, config editing and restart.
+progress, config editing and restart, and a pretend PTZ camera
+("Backyard PTZ") whose picture really pans, tilts and zooms.
 """
 
 import argparse
@@ -30,7 +31,11 @@ CAMERAS = {
     "pool": {"friendly_name": "Pool", "live": {"streams": {"Main": "pool", "Sub": "pool_sub"}}},
     "north_outside": {"friendly_name": "North Outside", "live": {"streams": {}}},
     "garage": {"friendly_name": "Garage", "live": {"streams": {}}},
+    # A pretend PTZ camera: no live video (the app shows its snapshots), and
+    # the picture really pans, tilts and zooms across a wide scene.
+    "backyard_ptz": {"friendly_name": "Backyard PTZ", "live": {"streams": {}}},
 }
+PTZ_CAM = "backyard_ptz"
 
 CONFIG_YAML = """mqtt:
   enabled: false
@@ -179,6 +184,8 @@ async def ws_loop(sock):
             continue
         log("ws", topic=m.get("topic"), payload=m.get("payload"))
         parts = (m.get("topic") or "").split("/")
+        if len(parts) == 2 and parts[1] == "ptz" and parts[0] == PTZ_CAM:
+            ptz_command(str(m.get("payload") or ""))
         if len(parts) == 3 and parts[2] == "set" and parts[0] in CAMERAS:
             key = {"recordings": "record"}.get(parts[1], parts[1])
             if key in state["switches"][parts[0]]:
@@ -207,9 +214,88 @@ async def stats(_):
     })
 
 
+# ── PTZ: one pretend camera that moves ────────────────────────────────
+# Position: pan x and tilt y in -1..1, zoom z in 0..1. MOVE_* sets a speed
+# until STOP, like a real ONVIF camera; presets and click-to-move jump.
+PTZ = {"x": 0.0, "y": 0.0, "z": 0.0, "vx": 0.0, "vy": 0.0, "vz": 0.0, "t": time.time()}
+PTZ_PRESETS = {"porch": (-0.75, 0.1, 0.35), "gate": (0.7, -0.3, 0.55), "wide": (0.0, 0.0, 0.0)}
+_PANO = {}
+
+
+def ptz_step():
+    now = time.time()
+    dt, PTZ["t"] = now - PTZ["t"], now
+    clamp = lambda v, lo, hi: max(lo, min(hi, v))
+    PTZ["x"] = clamp(PTZ["x"] + PTZ["vx"] * dt, -1, 1)
+    PTZ["y"] = clamp(PTZ["y"] + PTZ["vy"] * dt, -1, 1)
+    PTZ["z"] = clamp(PTZ["z"] + PTZ["vz"] * dt, 0, 1)
+
+
+def ptz_command(payload):
+    p = payload.lower()
+    ptz_step()
+    speeds = {"move_left": ("vx", -0.5), "move_right": ("vx", 0.5), "move_up": ("vy", 0.5), "move_down": ("vy", -0.5),
+              "zoom_in": ("vz", 0.4), "zoom_out": ("vz", -0.4)}
+    if p == "stop":
+        PTZ.update(vx=0.0, vy=0.0, vz=0.0)
+    elif p in speeds:
+        k, v = speeds[p]
+        PTZ[k] = v
+    elif p.startswith("preset_") and p[7:] in PTZ_PRESETS:
+        PTZ["x"], PTZ["y"], PTZ["z"] = PTZ_PRESETS[p[7:]]
+    elif p.startswith("move_relative_"):
+        try:
+            pan, tilt = (float(n) for n in p.split("_")[2:4])
+        except ValueError:
+            return
+        span = 1 / (1 + 3 * PTZ["z"])  # the closer the zoom, the smaller the jump
+        PTZ["x"] = max(-1, min(1, PTZ["x"] + pan * span * 0.5))
+        PTZ["y"] = max(-1, min(1, PTZ["y"] + tilt * span * 0.5))
+    log("ptz", payload=payload, x=round(PTZ["x"], 2), y=round(PTZ["y"], 2), z=round(PTZ["z"], 2))
+
+
+async def ptz_info(request):
+    cam = request.match_info["camera"]
+    if cam != PTZ_CAM:
+        return web.json_response({})
+    return web.json_response({"name": cam, "features": ["pt", "zoom", "pt-r-fov", "zoom-r"],
+                              "presets": list(PTZ_PRESETS), "profiles": [{"name": "main", "token": "profile_1"}]})
+
+
+def ptz_frame():
+    """The current view of the pretend PTZ camera, as JPEG bytes."""
+    import io
+    from PIL import Image, ImageDraw
+    if "img" not in _PANO:  # a wide scene: the other cameras side by side, a bit taller than one view
+        tiles = [Image.open(MEDIA / f"{c}.jpg").convert("RGB") for c in ("north_outside", "pool", "doorbell", "garage")]
+        tiles = [t.resize((int(t.width * 540 / t.height), 540)) for t in tiles]
+        pano = Image.new("RGB", (sum(t.width for t in tiles), 540))
+        x = 0
+        for t in tiles:
+            pano.paste(t, (x, 0))
+            x += t.width
+        _PANO["img"] = pano
+    pano = _PANO["img"]
+    ptz_step()
+    vw = 640 / (1 + 3 * PTZ["z"])
+    vh = vw * 9 / 16 * 1.0
+    cx = (PTZ["x"] + 1) / 2 * (pano.width - vw) + vw / 2
+    cy = (1 - (PTZ["y"] + 1) / 2) * (pano.height - vh) + vh / 2
+    view = pano.crop((int(cx - vw / 2), int(cy - vh / 2), int(cx + vw / 2), int(cy + vh / 2))).resize((640, 360))
+    d = ImageDraw.Draw(view)
+    d.rectangle((0, 0, 640, 22), fill=(0, 0, 0))
+    d.text((8, 5), f"PTZ  pan {PTZ['x']:+.2f}  tilt {PTZ['y']:+.2f}  zoom {PTZ['z']:.2f}"
+                   + ("  moving" if PTZ["vx"] or PTZ["vy"] or PTZ["vz"] else ""), fill=(255, 255, 0))
+    buf = io.BytesIO()
+    view.save(buf, "JPEG", quality=80)
+    return buf.getvalue()
+
+
 async def latest(request):
     cam = request.match_info["camera"]
     log("snapshot", camera=cam, path=request.path, h=request.query.get("h") or request.query.get("height"))
+    if cam == PTZ_CAM:
+        return web.Response(body=ptz_frame(), content_type="image/jpeg", headers={"Cache-Control": "no-store"})
     if cam not in CAMERAS:
         return web.json_response({"success": False, "message": "Camera not found"}, status=404)
     return web.FileResponse(MEDIA / f"{cam}.jpg", headers={"Content-Type": "image/jpeg"})
@@ -223,7 +309,7 @@ async def webrtc(request):
     src = request.query.get("src", "")
     offer = await request.json()
     log("webrtc", src=src)
-    if src.split("_sub")[0] not in CAMERAS:
+    if src.split("_sub")[0] not in CAMERAS or src == PTZ_CAM:
         return web.json_response({"error": f"stream not found: {src}"}, status=404)
     pc = RTCPeerConnection()
     state["pcs"].add(pc)
@@ -271,7 +357,7 @@ async def mse_ws(request):
     src = request.query.get("src", "")
     log("mse", src=src, auth=bool(request.headers.get("Authorization")))
     msg = await ws.receive_json()
-    if msg.get("type") != "mse":
+    if msg.get("type") != "mse" or src == PTZ_CAM:
         await ws.close()
         return ws
     init, frags = load_fragments()
@@ -487,6 +573,7 @@ def main():
     r.add_post("/api/export/custom/{camera}/start/{start}/end/{end}", start_export)
     r.add_post("/api/export/{camera}/start/{start}/end/{end}", start_export)
     r.add_get("/api/{camera}/latest.jpg", latest)
+    r.add_get("/api/{camera}/ptz/info", ptz_info)
     r.add_get("/api/{camera}/recordings", recordings)
     r.add_get("/api/{camera}/recordings/summary", recordings_summary)
     r.add_get("/vod/{camera}/start/{start}/end/{end}/{file}", vod)

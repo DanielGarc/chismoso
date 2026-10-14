@@ -373,6 +373,17 @@ impl Frigate {
         Ok(self.ok(self.req(Method::GET, &format!("/api/{}/recordings/summary?timezone={tz}", enc(camera))))?.json()?)
     }
 
+    /// What a camera's PTZ (pan/tilt/zoom) can do, as Frigate reports it for
+    /// ONVIF cameras: `{"features": ["pt", "zoom", "pt-r-fov", …], "presets": […]}`.
+    /// Cameras without PTZ give an empty object.
+    pub fn ptz_info(&self, camera: &str) -> Result<Value> {
+        let resp = self.send(self.req(Method::GET, &format!("/api/{}/ptz/info", enc(camera))))?;
+        if !resp.status().is_success() {
+            return Ok(json!({}));
+        }
+        Ok(resp.json::<Value>().unwrap_or_else(|_| json!({})))
+    }
+
     pub fn version(&self) -> Result<String> {
         let resp = self.ok(self.req(Method::GET, "/api/version"))?;
         Ok(resp.text()?.trim().trim_matches('"').to_string())

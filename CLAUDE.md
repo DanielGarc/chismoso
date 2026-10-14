@@ -38,7 +38,7 @@ CI (`.github/workflows/check.yml`) repeats these and adds macOS and iOS.
 
 ## Testing without cameras
 
-`dev/mock_frigate.py` imitates Frigate (login, live WebRTC/MSE, recordings
+`dev/mock_frigate.py` imitates Frigate (login, live WebRTC/MSE, a movable PTZ camera, recordings
 with gaps, review items, /ws pushes, exports, config). Set it up with
 `sh dev/make-mock-media.sh`, then `python3 dev/mock_frigate.py` (or `--tls`
 for HTTPS + login admin/password). `GET /debug/review?camera=doorbell` pushes

@@ -143,3 +143,51 @@ pub fn send_command(client: &Frigate, topic: &str, payload: &str) -> Result<()> 
     let _ = ws.flush();
     Ok(())
 }
+
+/// A command connection that stays open while it's in use, so a stream of
+/// commands (PTZ: move, then stop when the button is released) goes out
+/// immediately instead of each paying for a new TLS + WebSocket handshake.
+/// The socket closes after a minute without commands; a failed send
+/// reconnects once. Fire-and-forget: Frigate doesn't answer these.
+pub struct Commander {
+    tx: std::sync::mpsc::Sender<(String, String)>,
+}
+
+impl Commander {
+    pub fn start(client: Frigate) -> Self {
+        use std::sync::mpsc::RecvTimeoutError;
+        let (tx, rx) = std::sync::mpsc::channel::<(String, String)>();
+        std::thread::spawn(move || {
+            let mut ws: Option<Socket> = None;
+            loop {
+                match rx.recv_timeout(Duration::from_secs(60)) {
+                    Ok((topic, payload)) => {
+                        let text = serde_json::json!({ "topic": topic, "payload": payload, "retain": false }).to_string();
+                        for _ in 0..2 {
+                            if ws.is_none() {
+                                ws = connect(&client, "/ws").ok();
+                            }
+                            let Some(s) = ws.as_mut() else { break };
+                            if s.send(Message::Text(text.clone().into())).and_then(|_| s.flush()).is_ok() {
+                                break;
+                            }
+                            ws = None; // stale: reconnect and resend
+                        }
+                    }
+                    Err(RecvTimeoutError::Timeout) => {
+                        if let Some(mut s) = ws.take() {
+                            let _ = s.close(None);
+                            let _ = s.flush();
+                        }
+                    }
+                    Err(RecvTimeoutError::Disconnected) => break,
+                }
+            }
+        });
+        Self { tx }
+    }
+
+    pub fn send(&self, topic: &str, payload: &str) -> bool {
+        self.tx.send((topic.to_string(), payload.to_string())).is_ok()
+    }
+}

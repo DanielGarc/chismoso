@@ -20,3 +20,20 @@ fn kept_token_resumes_and_bad_token_is_expired() {
     let err = Frigate::resume(&url(), "not-a-token", trust()).err().expect("bad token must fail");
     assert!(format!("{err:#}").starts_with("session-expired:"), "{err:#}");
 }
+
+/// PTZ through the app's own command socket: info, hold-to-move, stop, preset.
+#[test]
+#[ignore]
+fn ptz_moves_the_pretend_camera() {
+    chismoso_lib::tls::init();
+    let trust = Trust { self_signed: true, ..Default::default() };
+    let c = Frigate::connect(&url(), "admin", "password", trust).expect("login");
+    let info = c.ptz_info("backyard_ptz").unwrap();
+    assert!(info["features"].as_array().unwrap().iter().any(|f| f == "pt"), "{info}");
+    assert_eq!(c.ptz_info("garage").unwrap(), serde_json::json!({}));
+    let cmd = chismoso_lib::mse::Commander::start(c.clone());
+    for p in ["MOVE_RIGHT", "STOP", "ZOOM_IN", "STOP", "preset_gate", "MOVE_RELATIVE_0.5_-0.25"] {
+        assert!(cmd.send("backyard_ptz/ptz", p));
+        std::thread::sleep(std::time::Duration::from_millis(400));
+    }
+}

@@ -711,6 +711,7 @@ async function openFocus(name, streamIdx = 0, at = null) {
   sel.hidden = cam.streams.length < 2;
   sel.onchange = () => { state.focus.streamIdx = +sel.value; if (state.focus.mode === "live") startLive(); };
   renderFocusToggles();
+  setupPtz();
 
   const tl = getTimeline();
   tl.selectMode = false;
@@ -738,6 +739,7 @@ async function startLive(handoff = null) {
   pb.close(); pb.key = null;
   stopLive(focus);
   focus.mode = "live";
+  updatePtz();
   setPlaybackUi();
   const cam = camByName(focus.cam);
   const img = $("#focus-img"), msg = $("#focus-msg"), badge = $("#focus-mode");
@@ -793,6 +795,7 @@ async function playAt(ts) {
   if (focus) {
     stopLive(focus);
     focus.mode = "rec";
+    updatePtz();
     $("#focus-img").hidden = true;
     focusVideo.hidden = false;
     $("#focus-mode").className = "badge rec"; $("#focus-mode").textContent = "Loading recording…";
@@ -1034,6 +1037,7 @@ document.addEventListener("keydown", (e) => {
   if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName) && document.activeElement !== speedInput) return;
   if ($("dialog[open]")) return;
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (e.shiftKey && ptzKeys[e.key] && ptz.info && state.focus?.mode === "live") return; // PTZ, handled below
   if (k === " " || k === "k") { e.preventDefault(); togglePlay(); }
   else if (k === "ArrowLeft") { e.preventDefault(); nudge(-10); }
   else if (k === "ArrowRight") { e.preventDefault(); nudge(10); }
@@ -1116,6 +1120,7 @@ function closeFocus(silent) {
   pb.close(); pb.key = null;
   clearSelection();
   $("#ev-card").hidden = true;
+  ptzStop(); ptz.info = null; ptz.cam = null; $("#ptz").hidden = true;
   state.focus = null;
   focusVideo.srcObject = null;
   $("#focus").hidden = true;
@@ -1895,6 +1900,84 @@ $("#about-copy").addEventListener("click", async () => {
   catch (_) { toast("Couldn't reach the clipboard; select the text instead.", true); }
 });
 window.addEventListener("beforeunload", () => closeMinute());
+
+// ══ PTZ (pan / tilt / zoom) ═════════════════════════════════════════
+// For cameras Frigate controls over ONVIF. Hold an arrow (button, or
+// Shift+arrow key) to move, release to stop; presets jump; double-click the
+// picture to centre the camera there (when the camera supports it). Only
+// while watching live: moving the camera means nothing for a recording.
+const ptz = { cam: null, info: null, moving: null };
+const ptzKeys = { ArrowUp: "MOVE_UP", ArrowDown: "MOVE_DOWN", ArrowLeft: "MOVE_LEFT", ArrowRight: "MOVE_RIGHT", "+": "ZOOM_IN", "=": "ZOOM_IN", "_": "ZOOM_OUT", "-": "ZOOM_OUT" };
+
+async function setupPtz() {
+  const f = state.focus;
+  ptzStop();
+  ptz.info = null; ptz.cam = f?.cam ?? null;
+  $("#ptz").hidden = true;
+  if (!f) return;
+  let info;
+  try { info = await call("ptz_info", { camera: f.cam }); } catch (_) { return; }
+  if (state.focus !== f || !(info.pan_tilt || info.zoom)) return;
+  ptz.info = info;
+  $("#ptz-pad").hidden = !info.pan_tilt;
+  $("#ptz-zoom").hidden = !info.zoom;
+  const sel = $("#ptz-preset");
+  sel.replaceChildren(h("option", { value: "" }, "Presets"), ...info.presets.map((p) => h("option", { value: p }, p)));
+  sel.hidden = !info.presets.length;
+  $("#stage").title = info.click_to_move ? "Double-click to point the camera here" : "";
+  updatePtz();
+}
+function updatePtz() {
+  const on = !!(ptz.info && state.focus?.mode === "live");
+  if (!on) ptzStop();
+  $("#ptz").hidden = !on;
+}
+function ptzSend(command) {
+  if (!ptz.cam) return;
+  invoke("ptz", { camera: ptz.cam, command }).catch((e) => toast(errText(e), true));
+}
+function ptzStart(command) {
+  if (ptz.moving === command) return;
+  ptz.moving = command;
+  ptzSend(command);
+}
+function ptzStop() {
+  if (!ptz.moving) return;
+  ptz.moving = null;
+  ptzSend("STOP");
+}
+for (const b of $$("#ptz [data-ptz]")) {
+  b.addEventListener("pointerdown", (e) => { e.preventDefault(); b.setPointerCapture?.(e.pointerId); ptzStart(b.dataset.ptz); });
+  for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) b.addEventListener(ev, ptzStop);
+  b.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && !e.repeat) { e.preventDefault(); ptzStart(b.dataset.ptz); } });
+  b.addEventListener("keyup", (e) => { if (e.key === "Enter" || e.key === " ") ptzStop(); });
+}
+document.addEventListener("keydown", (e) => {
+  if (!e.shiftKey || !ptzKeys[e.key] || !ptz.info || state.focus?.mode !== "live" || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName) || $("dialog[open]")) return;
+  e.preventDefault();
+  if (!e.repeat) ptzStart(ptzKeys[e.key]);
+});
+document.addEventListener("keyup", (e) => { if (ptz.moving && (ptzKeys[e.key] || e.key === "Shift")) ptzStop(); });
+window.addEventListener("blur", ptzStop);
+document.addEventListener("visibilitychange", () => { if (document.hidden) ptzStop(); });
+$("#ptz-preset").addEventListener("change", (e) => {
+  if (e.target.value) ptzSend("preset_" + e.target.value);
+  e.target.value = "";
+});
+// Double-click: centre the camera on that spot (pan right / tilt up positive).
+$("#stage").addEventListener("dblclick", (e) => {
+  if (!ptz.info?.click_to_move || state.focus?.mode !== "live" || e.target.closest(".ptz")) return;
+  const el = focusVideo.hidden ? $("#focus-img") : focusVideo;
+  const r = el.getBoundingClientRect();
+  // the picture is letterboxed inside the element (object-fit: contain)
+  const iw = el.videoWidth || el.naturalWidth || r.width, ih = el.videoHeight || el.naturalHeight || r.height;
+  const s = Math.min(r.width / iw, r.height / ih), w = iw * s, hgt = ih * s;
+  const nx = (e.clientX - (r.left + (r.width - w) / 2)) / w, ny = (e.clientY - (r.top + (r.height - hgt) / 2)) / hgt;
+  if (nx < 0 || nx > 1 || ny < 0 || ny > 1) return;
+  const c = (v) => Math.max(-1, Math.min(1, v)).toFixed(3);
+  ptzSend(`MOVE_RELATIVE_${c((nx - 0.5) * 2)}_${c((0.5 - ny) * 2)}`);
+});
 
 // ══ Sharing ═════════════════════════════════════════════════════════
 // Finished clips, timelapses and snapshots: the system share menu (macOS,

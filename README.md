@@ -141,7 +141,7 @@ macOS builds aren't code-signed. The first time, right-click the app and choose 
 pip install aiohttp aiortc
 sh dev/make-mock-media.sh
 python3 dev/mock_frigate.py          # http://127.0.0.1:5055, no login
-python3 dev/mock_frigate.py --tls    # https://127.0.0.1:5443, self-signed, admin / password
+python3 dev/mock_frigate.py --tls    # https://127.0.0.1:5443, self-signed, admin / password (camera "Backyard PTZ" pans/zooms)
 ```
 
 ## How it fits together
@@ -183,9 +183,8 @@ How the pieces talk to Frigate:
 
 The version lives in `src-tauri/Cargo.toml` (Tauri reads it from there). Builds are stamped with the git commit and build date, shown under **server menu → About** (with a **Copy version info** button for bug reports), on the sign-in screen, and by `--version`. Set `SOURCE_DATE_EPOCH` for reproducible build dates.
 
-The name is a working title. It's defined once in `src-tauri/src/about.rs` (`NAME`) plus `productName` in `tauri.conf.json`; the UI picks it up from there.
+The name is defined once in `src-tauri/src/about.rs` (`NAME`) plus `productName` in `tauri.conf.json`; the UI picks it up from there.
 
 ## Not yet included
 
 - Two-way talk (the doorbell intercom). go2rtc supports it, so it's a natural next step.
-- PTZ controls.

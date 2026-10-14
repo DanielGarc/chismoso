@@ -119,6 +119,19 @@
           <img id="focus-img" alt="" hidden>
           <p class="stage-msg" id="focus-msg" hidden></p>
           <div class="stage-time" id="stage-time"></div>
+          <div class="ptz" id="ptz" hidden>
+            <div class="ptz-pad" id="ptz-pad" role="group" aria-label="Move the camera">
+              <button class="ptz-b up" data-ptz="MOVE_UP" aria-label="Tilt up" title="Tilt up (Shift+↑)"><svg viewBox="0 0 24 24" aria-hidden="true" style="transform:rotate(0deg)"><path d="M7 14l5-5 5 5"/></svg></button>
+              <button class="ptz-b left" data-ptz="MOVE_LEFT" aria-label="Pan left" title="Pan left (Shift+←)"><svg viewBox="0 0 24 24" aria-hidden="true" style="transform:rotate(-90deg)"><path d="M7 14l5-5 5 5"/></svg></button>
+              <button class="ptz-b right" data-ptz="MOVE_RIGHT" aria-label="Pan right" title="Pan right (Shift+→)"><svg viewBox="0 0 24 24" aria-hidden="true" style="transform:rotate(90deg)"><path d="M7 14l5-5 5 5"/></svg></button>
+              <button class="ptz-b down" data-ptz="MOVE_DOWN" aria-label="Tilt down" title="Tilt down (Shift+↓)"><svg viewBox="0 0 24 24" aria-hidden="true" style="transform:rotate(180deg)"><path d="M7 14l5-5 5 5"/></svg></button>
+            </div>
+            <div class="ptz-zoom" id="ptz-zoom" role="group" aria-label="Zoom">
+              <button class="ptz-b" data-ptz="ZOOM_IN" aria-label="Zoom in" title="Zoom in (Shift+=)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12"/></svg></button>
+              <button class="ptz-b" data-ptz="ZOOM_OUT" aria-label="Zoom out" title="Zoom out (Shift+-)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg></button>
+            </div>
+            <select id="ptz-preset" class="ptz-preset" aria-label="Go to a preset position" hidden><option value="">Presets</option></select>
+          </div>
         </div>
       </div>
       <div class="pb" id="pb">

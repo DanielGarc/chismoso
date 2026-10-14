@@ -23,6 +23,8 @@ pub struct AppState {
     /// Notification settings (shared with the watcher thread) and the watcher.
     notify: Arc<Mutex<notify::Settings>>,
     watcher: Mutex<Option<notify::Watcher>>,
+    /// Lasting command socket for PTZ, opened on first use.
+    ptz: Mutex<Option<mse::Commander>>,
 }
 
 type CmdResult<T> = Result<T, String>;
@@ -174,6 +176,7 @@ fn install_client(state: &State<'_, AppState>, c: Frigate) {
     if let Some(w) = state.watcher.lock().unwrap().take() {
         w.stop();
     }
+    *state.ptz.lock().unwrap() = None;
     let old = state.client.lock().unwrap().replace(c);
     retire(old);
 }
@@ -640,4 +643,71 @@ fn stamp(at: Option<f64>) -> String {
     use chrono::{Local, TimeZone};
     let t = at.and_then(|t| Local.timestamp_opt(t as i64, 0).single()).unwrap_or_else(Local::now);
     t.format("%Y-%m-%d %H-%M-%S").to_string()
+}
+
+// ── PTZ (pan / tilt / zoom) ─────────────────────────────────────────────
+
+#[derive(Serialize)]
+pub(crate) struct PtzInfo {
+    /// Continuous pan and tilt (hold a direction, release to stop).
+    pan_tilt: bool,
+    zoom: bool,
+    /// Point at a spot in the picture and the camera centres on it.
+    click_to_move: bool,
+    presets: Vec<String>,
+}
+
+/// What this camera's PTZ supports; all false for cameras without PTZ.
+#[tauri::command]
+pub(crate) async fn ptz_info(state: State<'_, AppState>, camera: String) -> CmdResult<PtzInfo> {
+    let c = client(&state)?;
+    blocking(move || {
+        let v = c.ptz_info(&camera)?;
+        let has = |f: &str| v["features"].as_array().is_some_and(|a| a.iter().any(|x| x.as_str() == Some(f)));
+        let presets = v["presets"].as_array().map(|a| a.iter().filter_map(|p| p.as_str().map(str::to_string)).collect()).unwrap_or_default();
+        Ok(PtzInfo { pan_tilt: has("pt"), zoom: has("zoom"), click_to_move: has("pt-r-fov"), presets })
+    })
+    .await
+}
+
+/// Sends a PTZ command: MOVE_UP / MOVE_DOWN / MOVE_LEFT / MOVE_RIGHT,
+/// ZOOM_IN / ZOOM_OUT, STOP, preset_<name>, or MOVE_RELATIVE_<pan>_<tilt>
+/// (each -1..1, from the centre of the picture).
+#[tauri::command]
+pub(crate) fn ptz(state: State<'_, AppState>, camera: String, command: String) -> CmdResult<()> {
+    if camera.is_empty() || camera.contains('/') {
+        return Err("Bad camera name.".into());
+    }
+    let ok = match command.as_str() {
+        "MOVE_UP" | "MOVE_DOWN" | "MOVE_LEFT" | "MOVE_RIGHT" | "ZOOM_IN" | "ZOOM_OUT" | "STOP" => true,
+        c if c.starts_with("preset_") => c.len() > 7 && !c.contains('/'),
+        c if c.starts_with("MOVE_RELATIVE_") => {
+            let nums: Vec<f64> = c["MOVE_RELATIVE_".len()..].split('_').filter_map(|n| n.parse().ok()).collect();
+            nums.len() == 2 && nums.iter().all(|n| (-1.0..=1.0).contains(n))
+        }
+        _ => false,
+    };
+    if !ok {
+        return Err("Unknown camera movement.".into());
+    }
+    let mut cmd = state.ptz.lock().unwrap();
+    if cmd.is_none() {
+        *cmd = Some(mse::Commander::start(client(&state)?));
+    }
+    if cmd.as_ref().is_some_and(|c| c.send(&format!("{camera}/ptz"), &command)) {
+        Ok(())
+    } else {
+        *cmd = None;
+        Err("Couldn't reach Frigate to move the camera. Try again.".into())
+    }
+}
+
+#[cfg(test)]
+mod ptz_tests {
+    #[test]
+    fn relative_parse() {
+        let c = "MOVE_RELATIVE_0.25_-0.5";
+        let nums: Vec<f64> = c["MOVE_RELATIVE_".len()..].split('_').filter_map(|n| n.parse().ok()).collect();
+        assert_eq!(nums, vec![0.25, -0.5]);
+    }
 }

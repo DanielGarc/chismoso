@@ -34,6 +34,17 @@ The **Detect**, **Record** and **Snapshots** switches change what Frigate does f
 
 The same switches for every camera are on the [Settings](settings.md#camera-switches) tab.
 
+## Moving a PTZ camera
+
+For cameras that can pan, tilt or zoom, and that Frigate controls over ONVIF (`onvif:` in the camera's Frigate config), a set of controls appears in the corner of the live picture:
+
+- **Arrows**: hold to pan and tilt; let go to stop. On a computer, <kbd>Shift</kbd> plus the arrow keys does the same.
+- **+ / −**: hold to zoom.
+- **Presets**: jump to a position saved on the camera.
+- **Double-click the picture** to centre the camera on that spot, when the camera supports it.
+
+The controls only show while watching live, and only on cameras that Frigate reports as movable. Cameras that don't speak ONVIF (Wyze, for example, with its stock firmware) can't be moved this way.
+
 ## Snapshots
 
 **Snapshot** saves a full-size picture from this camera to your exports folder: the live image, or, while you're playing a recording, the moment on screen. A note pops up with **Share…**, **Copy**, **Open** and **Show in folder**, so you can send it straight away (see [Sharing](clips-and-timelapses.md#sharing)). Files are named after the camera and the time, like `garage 2026-10-12 21-30-05.jpg`.

@@ -32,6 +32,16 @@ These work on the Live tab when you're not typing in a field.
 | <kbd>Shift</kbd> + drag on the timeline | Select a range |
 | <kbd>Esc</kbd> | Clear the selection; or, when playing back the grid, return to live |
 
+## Moving a PTZ camera
+
+When a [PTZ camera](camera-view.md#moving-a-ptz-camera) is open and live:
+
+| Keys | What they do |
+|---|---|
+| <kbd>Shift</kbd>+<kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> | Pan and tilt while held |
+| <kbd>Shift</kbd>+<kbd>=</kbd> / <kbd>Shift</kbd>+<kbd>-</kbd> | Zoom in / out while held |
+| Double-click the picture | Point the camera at that spot (if the camera supports it) |
+
 ## Mouse and trackpad on the timeline
 
 | Action | What it does |
