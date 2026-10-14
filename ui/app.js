@@ -2134,12 +2134,14 @@ const store = {
   set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (_) {} },
 };
 const autoUpdates = () => store.get("updateAuto") !== "0";
+const devUpdates = () => store.get("updateDev") === "1";
+const askForUpdate = () => invoke("check_update", { dev: devUpdates() });
 
 async function checkForUpdate({ manual = false } = {}) {
   if (!Platform.has("self_update") || updateUi.busy) return null;
   $("#u-status").textContent = "Checking…";
   try {
-    const info = await invoke("check_update");
+    const info = await askForUpdate();
     updateUi.info = info;
     updateUi.checkedAt = Date.now();
     store.set("updateCheckedAt", String(updateUi.checkedAt));
@@ -2225,7 +2227,7 @@ $("#update-go").addEventListener("click", async () => {
     $("#update-web").hidden = false;
     $("#update-skip").hidden = false;
     // the pending update was used up; fetch it again (quietly) for the retry
-    invoke("check_update").then((info) => { updateUi.info = info; if (!info) $("#update-bar").hidden = true; }).catch(() => {});
+    askForUpdate().then((info) => { updateUi.info = info; if (!info) $("#update-bar").hidden = true; }).catch(() => {});
   } finally { updateUi.busy = false; }
 });
 listen("update-progress", ({ payload }) => {
@@ -2240,6 +2242,10 @@ $("#u-auto").addEventListener("change", (e) => {
   store.set("updateAuto", e.target.checked ? null : "0");
   if (e.target.checked) maybeCheckForUpdate();
 });
+$("#u-dev").addEventListener("change", (e) => {
+  store.set("updateDev", e.target.checked ? "1" : null);
+  checkForUpdate({ manual: true });
+});
 function maybeCheckForUpdate() {
   if (!autoUpdates() || document.hidden) return;
   const last = updateUi.checkedAt || +store.get("updateCheckedAt") || 0;
@@ -2247,8 +2253,9 @@ function maybeCheckForUpdate() {
 }
 Platform.info.then((i) => {
   if (!Platform.has("self_update")) return;
-  $("#u-version").textContent = `You have ${i.version}`;
+  $("#u-version").textContent = `You have ${i.version}${i.version.includes("-") ? " (development build)" : ""}`;
   $("#u-auto").checked = autoUpdates();
+  $("#u-dev").checked = devUpdates();
   const last = +store.get("updateCheckedAt") || 0;
   if (last) $("#u-status").textContent = `Last checked ${new Date(last).toLocaleString()}.`;
   setTimeout(maybeCheckForUpdate, 8000); // after start-up settles

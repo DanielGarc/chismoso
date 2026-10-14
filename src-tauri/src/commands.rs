@@ -267,8 +267,8 @@ pub(crate) fn video_decoding() -> platform::Decoding {
 
 /// Is there a newer release? (desktop; always None on phones)
 #[tauri::command]
-pub(crate) async fn check_update(app: AppHandle) -> CmdResult<Option<platform::UpdateInfo>> {
-    platform::check_update(&app).await
+pub(crate) async fn check_update(app: AppHandle, dev: Option<bool>) -> CmdResult<Option<platform::UpdateInfo>> {
+    platform::check_update(&app, dev.unwrap_or(false)).await
 }
 
 /// Installs the update found by check_update, sending progress (0..1) as

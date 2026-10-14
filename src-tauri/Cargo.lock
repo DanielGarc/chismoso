@@ -510,6 +510,7 @@ dependencies = [
  "reqwest",
  "rustls",
  "rustls-platform-verifier",
+ "semver",
  "serde",
  "serde_json",
  "sha2 0.11.0",

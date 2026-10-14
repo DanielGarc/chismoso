@@ -68,7 +68,7 @@ pub fn open_path(_path: &str, _reveal: bool, _connected: Option<&str>) -> Result
 }
 
 /// Phones update through their app stores.
-pub async fn check_update(_app: &AppHandle) -> Result<Option<super::UpdateInfo>, String> {
+pub async fn check_update(_app: &AppHandle, _dev: bool) -> Result<Option<super::UpdateInfo>, String> {
     Ok(None)
 }
 

@@ -31,13 +31,28 @@ pub fn plugins<R: Runtime>(builder: Builder<R>) -> Builder<R> {
 // ── self-update ──
 // Releases are built by .github/workflows/release.yml, which also publishes a
 // signed `latest.json`; the endpoint and public key are in tauri.conf.json.
+// Development builds (dev.yml) publish theirs on the rolling `dev` pre-release;
+// with "Get development builds" on, both are checked and the newer one wins
+// (so a dev copy still moves on to the next real release).
 // The update is checked here and only installed when the user says so.
+
+const DEV_MANIFEST: &str = "https://github.com/DanielGarc/chismoso/releases/download/dev/latest.json";
 
 static PENDING: std::sync::Mutex<Option<tauri_plugin_updater::Update>> = std::sync::Mutex::new(None);
 
-pub async fn check_update(app: &AppHandle) -> Result<Option<super::UpdateInfo>, String> {
+pub async fn check_update(app: &AppHandle, dev: bool) -> Result<Option<super::UpdateInfo>, String> {
     use tauri_plugin_updater::UpdaterExt;
-    let update = app.updater().map_err(|e| e.to_string())?.check().await.map_err(|e| e.to_string())?;
+    let updater = app.updater().map_err(|e| e.to_string())?;
+    let stable = updater.check();
+    let update = if dev {
+        let url = DEV_MANIFEST.parse().map_err(|e| format!("{e}"))?;
+        let dev = app.updater_builder().endpoints(vec![url]).map_err(|e| e.to_string())?.build().map_err(|e| e.to_string())?;
+        let s = stable.await.map_err(|e| e.to_string())?;
+        // A missing dev manifest (no dev build yet) isn't an error worth showing.
+        newest(s, dev.check().await.ok().flatten())
+    } else {
+        stable.await.map_err(|e| e.to_string())?
+    };
     let info = update.as_ref().map(|u| super::UpdateInfo {
         version: u.version.clone(),
         current: u.current_version.clone(),
@@ -50,6 +65,21 @@ pub async fn check_update(app: &AppHandle) -> Result<Option<super::UpdateInfo>, 
     });
     *PENDING.lock().unwrap() = update;
     Ok(info)
+}
+
+fn newest(a: Option<tauri_plugin_updater::Update>, b: Option<tauri_plugin_updater::Update>) -> Option<tauri_plugin_updater::Update> {
+    match (a, b) {
+        (Some(a), Some(b)) => Some(if newer(&b.version, &a.version) { b } else { a }),
+        (a, b) => a.or(b),
+    }
+}
+
+/// Semantic-version order: 0.6.3 > 0.6.3-12 > 0.6.3-5 > 0.6.2.
+fn newer(a: &str, b: &str) -> bool {
+    match (semver::Version::parse(a), semver::Version::parse(b)) {
+        (Ok(a), Ok(b)) => a > b,
+        _ => false,
+    }
 }
 
 /// Downloads and installs the update found by `check_update`, reporting
@@ -470,3 +500,13 @@ pub mod windows {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn version_order() {
+        assert!(super::newer("0.6.3", "0.6.3-12"));
+        assert!(super::newer("0.6.3-12", "0.6.3-5"));
+        assert!(super::newer("0.6.3-1", "0.6.2"));
+        assert!(!super::newer("0.6.2", "0.6.3-1"));
+    }
+}

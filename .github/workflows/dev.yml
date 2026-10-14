@@ -6,8 +6,10 @@
 # - Nothing is committed: the version is set only inside the build, as the
 #   next patch version with a build number (e.g. 0.6.3-12). Numbers only,
 #   because Windows installers (MSI) refuse letters in versions.
-# - Pre-releases aren't "latest" on GitHub, so installed copies, the website
-#   and the download buttons never see dev builds.
+# - Pre-releases aren't "latest" on GitHub, so the website, the download
+#   buttons and installed copies never see dev builds, unless the copy has
+#   Settings → Updates → "Get development builds" on (it reads this release's
+#   latest.json as well as the normal one, and takes the newer).
 # - A dev build updates itself to the next real release like any copy
 #   (0.6.3-12 is older than 0.6.3).
 # - Each run replaces the previous dev build.
@@ -63,8 +65,8 @@ jobs:
             try { await github.rest.git.deleteRef({ owner, repo, ref: 'tags/dev' }); } catch (_) { /* first run */ }
             const sha = context.sha.slice(0, 8);
             const body = `**Development build ${process.env.VERSION}** from \`${sha}\`, for testing. ` +
-              `Not offered to installed copies; it updates itself to the next real release.\n\n` +
-              `## Changes since the last release\n\n${process.env.NOTES}`;
+              `Offered only to copies with "Get development builds" on; it updates itself to the next real release.\n\n` +
+              `## What's new\n\n${process.env.NOTES}`;
             const rel = (await github.rest.repos.createRelease({
               owner, repo, tag_name: 'dev', target_commitish: context.sha,
               name: `Dev build ${process.env.VERSION}`, body, prerelease: true, make_latest: 'false',
@@ -125,3 +127,11 @@ jobs:
           releaseId: ${{ needs.prepare.outputs.id }}
           includeUpdaterJson: false
           args: ${{ matrix.args }}
+
+  # latest.json for copies that get development builds.
+  manifest:
+    needs: [prepare, build]
+    uses: ./.github/workflows/updater-json.yml
+    with:
+      tag: dev
+      version: ${{ needs.prepare.outputs.version }}

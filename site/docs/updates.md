@@ -29,6 +29,7 @@ Phones will update through their app stores once the [phone apps](phones.md) are
 
 - **Check for updates automatically**, on by default. Turn it off and the app never contacts GitHub on its own.
 - **Check now**, which also shows a version you chose to skip.
+- **Get development builds**, off by default. Turn it on to try new features before they're released. Development builds are made from work in progress, so they can have bugs. They're numbered like `0.6.3-12`, and a development build still updates to the next real release (`0.6.3`) when it comes out. Turning the setting off keeps the build you have until a newer release arrives.
 
 You can also check from **About → Check for updates**.
 

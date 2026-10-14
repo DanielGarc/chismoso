@@ -44,6 +44,8 @@ webpki-roots = "1"
 notify-rust = "4.18"
 # Self-update from signed GitHub releases (desktop; phones update through stores).
 tauri-plugin-updater = { version = "2", default-features = false, features = ["rustls-tls", "zip"] }
+# Comparing release and development versions (already used by the updater).
+semver = "1"
 
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
 tauri-plugin-notification = "2"
