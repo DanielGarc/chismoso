@@ -82,9 +82,9 @@ Apple menu → **About This Mac**. "Chip" means Apple Silicon; "Processor" means
 
 ## Using it
 
-### Why does the grid show snapshots instead of video?
+### Why does the grid show pictures instead of video?
 
-That's the default, to go easy on your server and network. Tick **Live grid** to stream every tile. See [Live view](live-view.md#snapshots-or-live-video).
+The grid shows live video unless **Settings → Appearance → Live video in the grid** is off (handy on a slow connection). A camera whose video can't start (see [Live video setup](live-video-setup.md)) shows refreshed pictures instead. See [Live view](live-view.md#live-video-or-pictures).
 
 ### Why does a tile say 5 fps when my camera does 25?
 

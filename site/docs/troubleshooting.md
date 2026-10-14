@@ -42,7 +42,7 @@ Both WebRTC and MSE failed for that camera. Check that the camera works live in 
 
 ### The grid shows still pictures
 
-That's the default. Tick **Live grid** in the toolbar. See [Snapshots or live video](live-view.md#snapshots-or-live-video).
+Check that **Settings → Appearance → Live video in the grid** is on. If it is, the live video couldn't start for those cameras and the grid fell back to pictures: see [Live video setup](live-video-setup.md) and [Live view](live-view.md#live-video-or-pictures).
 
 ### Live video stopped after I minimized the window
 

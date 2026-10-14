@@ -62,7 +62,7 @@ Over a VPN or a remote connection, WebRTC's UDP port is often blocked or unreach
 
 ## Grid tiles vs the camera view
 
-- The grid shows **snapshots** until you tick **Live grid**. See [Live view](live-view.md#snapshots-or-live-video).
+- The grid shows pictures instead of video when **Settings → Appearance → Live video in the grid** is off. See [Live view](live-view.md#live-video-or-pictures).
 - The grid prefers a camera's **substream** (the second entry in `live.streams`); the camera view lets you choose. See [Substreams](live-view.md#substreams).
 
 ## Frame rates
