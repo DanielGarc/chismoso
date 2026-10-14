@@ -453,15 +453,15 @@ function renderTabs() {
   const dots = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/></svg>';
   $("#vtabs").replaceChildren(...prefs.views.map((v) => {
     const on = v.id === prefs.view;
-    const tab = h("button", { class: "vtab" + (on ? " on" : ""), role: "tab", "aria-selected": String(on), "data-id": v.id,
-      title: on ? "Double-click to rename" : "", onclick: () => switchView(v.id), ondblclick: () => renameView(v.id) },
-    h("span", { class: "vname" }, v.name), h("span", { class: "cnt" }, String(v.items.length)));
+    // The options button sits beside the tab's own button (a button can't hold another).
+    const tab = h("div", { class: "vtab" + (on ? " on" : ""), "data-id": v.id },
+      h("button", { class: "vtab-main", role: "tab", "aria-selected": String(on), title: on ? "Double-click to rename" : "",
+        onclick: () => switchView(v.id), ondblclick: () => renameView(v.id) },
+      h("span", { class: "vname" }, v.name), h("span", { class: "cnt" }, String(v.items.length))));
     if (on) {
-      const more = h("span", { class: "vmore", role: "button", tabindex: "0", "aria-label": `Options for ${v.name}`, title: "Options" });
+      const more = h("button", { class: "vmore", "aria-label": `Options for ${v.name}`, title: "Options",
+        onclick: (e) => { e.stopPropagation(); viewMenu(v.id, tab); } });
       more.innerHTML = dots;
-      const open = (e) => { e.stopPropagation(); viewMenu(v.id, tab); };
-      more.addEventListener("click", open);
-      more.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") open(e); });
       tab.append(more);
     }
     return tab;
@@ -743,18 +743,6 @@ function zoomAt(z, cx, cy) {
 }
 const zoomCenter = (f) => { const g = $("#grid").getBoundingClientRect(); zoomAt(zoom.z * f, g.left + g.width / 2, g.top + g.height / 2); };
 function resetZoom() { zoom.z = 1; zoom.x = 0; zoom.y = 0; applyZoom(); }
-// Fill the window with one camera, without opening it.
-function zoomTo(name) {
-  const it = currentView().items.find((x) => x.cam === name);
-  if (!it) return;
-  const g = $("#grid").getBoundingClientRect();
-  const z = Math.min(Views.N / it.w, Views.N / it.h);
-  const cw = g.width / Views.N, ch = g.height / Views.N;
-  zoom.z = z;
-  zoom.x = g.width / 2 - (it.x + it.w / 2) * cw * z;
-  zoom.y = g.height / 2 - (it.y + it.h / 2) * ch * z;
-  applyZoom();
-}
 $("#zoom-in").addEventListener("click", () => zoomCenter(1.5));
 $("#zoom-out").addEventListener("click", () => zoomCenter(1 / 1.5));
 $("#zoom-fit").addEventListener("click", resetZoom);
@@ -824,9 +812,6 @@ function makeTile(cam) {
   const fps = h("span", { class: "fps" });
   const dot = h("span", { class: "state" });
   const recMsg = h("span", { class: "rec-msg" });
-  const zoomBtn = h("button", { class: "tt", "aria-label": `Zoom to ${cam.friendly_name}`, title: "Zoom to this camera",
-    onclick: (e) => { e.stopPropagation(); zoomTo(cam.name); } });
-  zoomBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M8.5 11h5M11 8.5v5"/></svg>';
   const removeBtn = h("button", { class: "tt arr", "aria-label": `Remove ${cam.friendly_name} from this view`, title: "Remove from this view",
     onclick: (e) => { e.stopPropagation(); const v = currentView(); commitView(Views.remove(v, v.items.findIndex((x) => x.cam === cam.name))); } });
   removeBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
@@ -842,7 +827,7 @@ function makeTile(cam) {
     img, video, h("div", { class: "empty" }, "Loading…"), recMsg,
     h("div", { class: "tile-msg conn-msg" }, h("span", { class: "spin" }), "Connecting…"),
     h("div", { class: "tile-msg off-msg" }, "Offline"),
-    h("div", { class: "tile-tools" }, zoomBtn, removeBtn),
+    h("div", { class: "tile-tools" }, removeBtn),
     h("div", { class: "label" }, dot, cam.friendly_name, fps), handle);
   el.addEventListener("pointerdown", (e) => {
     if (e.target.closest(".tile-tools, .resize")) return;

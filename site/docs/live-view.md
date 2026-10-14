@@ -35,7 +35,6 @@ Look closer at part of the wall without opening a camera:
 
 - Turn the mouse wheel, or pinch on a touchpad or touch screen, to zoom in where the pointer is.
 - When zoomed in, drag (or scroll with two fingers) to look around.
-- The magnifier on a camera zooms straight to it.
 - The buttons in the corner zoom in and out, and **Fit** (or Ctrl+0) shows the whole view again.
 
 Clicking a camera still opens it full size.
