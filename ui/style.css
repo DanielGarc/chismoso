@@ -68,6 +68,8 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 /* The grid is a wall of 12×12 cells that fills the space (views.js); it can
    be zoomed and dragged around. Phones show the same cameras in two columns. */
 .grid { position: relative; overflow: hidden; border-radius: var(--radius); touch-action: none; }
+.wall { user-select: none; -webkit-user-select: none; }
+.wall img, .wall video { -webkit-user-drag: none; user-select: none; pointer-events: none; }
 .wall { position: absolute; inset: 0; display: grid; gap: 6px; grid-template-columns: repeat(12, minmax(0, 1fr));
   grid-template-rows: repeat(12, minmax(0, 1fr)); transform-origin: 0 0; }
 .grid.zoomed { cursor: grab; }
@@ -120,9 +122,9 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
   background: var(--info-bg); border: 1px solid var(--info-line); color: var(--info-text); font-size: 13px; }
 
 /* camera list */
-.rail { width: 210px; flex: none; display: flex; flex-direction: column; gap: 8px; background: var(--panel); border: 1px solid var(--line);
+.rail { width: 190px; flex: none; display: flex; flex-direction: column; gap: 8px; background: var(--panel); border: 1px solid var(--line);
   border-radius: var(--radius); padding: 10px 8px; min-height: 0; }
-.rail-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 6px; gap: 8px; }
+.rail-head { display: flex; align-items: center; padding: 0 0 0 6px; gap: 8px; white-space: nowrap; }
 .rail-list { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1; display: flex; flex-direction: column; gap: 1px; }
 .rail-item { display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 8px; cursor: grab; font-size: 13px; touch-action: none; user-select: none; }
 .rail-item:hover { background: var(--hover-ghost); }
@@ -130,6 +132,16 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .rail-item:not(.in) .rail-name { color: var(--muted); }
 .rail-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rail-hint { margin: 0; padding: 8px 6px 0; border-top: 1px solid var(--row-line); }
+.rail-toggle { margin-left: auto; width: 26px; height: 26px; display: grid; place-items: center; border: 0; background: none; color: var(--muted);
+  border-radius: 6px; cursor: pointer; flex: none; }
+.rail-toggle:hover { background: var(--hover-ghost); color: var(--text); }
+.rail-toggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.rail.folded { width: 42px; padding: 8px 4px; }
+.rail.folded .rail-title, .rail.folded .rail-sum, .rail.folded .rail-name, .rail.folded .rail-hint { display: none; }
+.rail.folded .rail-head { padding: 0; justify-content: center; }
+.rail.folded .rail-toggle { margin: 0; }
+.rail.folded .rail-toggle svg { transform: rotate(180deg); }
+.rail.folded .rail-item { justify-content: center; padding: 9px 0; }
 
 /* tile states and tools */
 .tile-msg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: none; align-items: center; gap: 8px;
@@ -166,7 +178,8 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .zoomctl svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
 #zoom-val { min-width: 44px; text-align: center; font-variant-numeric: tabular-nums; }
 body.arranging .zoomctl { display: none; }
-#view-live .pb { flex: none; }
+#view-live .pb { flex: none; position: relative; z-index: 20; } /* over the cameras: the event card pops up into the grid */
+#view-live .live-body { position: relative; z-index: 1; }
 
 /* ── cards & forms ────────────────────── */
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
@@ -386,8 +399,8 @@ body:not(.mac) .menu-wrap { margin-right: 4px; }
 .lg.alert { background: var(--tl-alert); } .lg.detection { background: var(--tl-detection); } .lg.rec { background: var(--tl-rec); }
 @media (max-width: 980px) { .tl-legend { display: none; } }
 canvas.timeline { height: 64px; }
-.ev-card { position: absolute; bottom: 70px; width: 240px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
-  overflow: hidden; box-shadow: 0 12px 30px #000a; pointer-events: none; z-index: 6; display: flex; flex-direction: column; }
+.ev-card { position: fixed; width: 240px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  overflow: hidden; box-shadow: 0 12px 30px #000a; pointer-events: none; z-index: 60; display: flex; flex-direction: column; }
 .ev-card img { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #000; display: block; }
 .ev-card > div { padding: 7px 10px; display: flex; flex-direction: column; gap: 2px; border-top: 3px solid var(--tl-detection); }
 .ev-card.alert > div { border-top-color: var(--tl-alert); }

@@ -107,7 +107,10 @@
       </div>
       <div class="live-body">
       <aside class="rail" id="rail" aria-label="Cameras" data-wide>
-        <div class="rail-head"><strong>Cameras</strong><span class="muted small" id="rail-sum"></span></div>
+        <div class="rail-head">
+          <strong class="rail-title">Cameras</strong><span class="muted small rail-sum" id="rail-sum"></span>
+          <button class="rail-toggle" id="rail-toggle" aria-expanded="true" aria-label="Collapse the camera list" title="Collapse the camera list"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+        </div>
         <ul class="rail-list" id="rail-list"></ul>
         <p class="rail-hint muted small">Drag a camera onto the grid to place it.</p>
       </aside>

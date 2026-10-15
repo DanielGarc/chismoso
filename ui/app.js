@@ -550,10 +550,21 @@ function closeViewMenu() { $("#vmenu")?.remove(); }
 document.addEventListener("click", (e) => { if (!e.target.closest("#vmenu")) closeViewMenu(); });
 
 // ── camera list beside the grid ──
+// It can fold down to a slim column of status dots (names on hover), remembered.
+function applyRail() {
+  const folded = !!prefs.railFolded;
+  $("#rail").classList.toggle("folded", folded);
+  const b = $("#rail-toggle");
+  b.setAttribute("aria-expanded", String(!folded));
+  b.title = folded ? "Show the camera list" : "Collapse the camera list";
+  b.setAttribute("aria-label", b.title);
+}
+$("#rail-toggle").addEventListener("click", () => { prefs.railFolded = !prefs.railFolded; savePrefs(); applyRail(); });
+applyRail();
 function renderRail() {
   const inView = new Set(currentView().items.map((it) => it.cam));
   $("#rail-list").replaceChildren(...state.info.cameras.map((cam) => {
-    const li = h("li", { class: "rail-item" + (inView.has(cam.name) ? " in" : ""), "data-cam": cam.name, title: "Drag onto the grid, or click to open" },
+    const li = h("li", { class: "rail-item" + (inView.has(cam.name) ? " in" : ""), "data-cam": cam.name, title: `${cam.friendly_name}: drag onto the grid, or click to open` },
       h("span", { class: "state" }), h("span", { class: "rail-name" }, cam.friendly_name));
     li.addEventListener("pointerdown", (e) => dragStart(e, { cam: cam.name, from: null }));
     li.addEventListener("click", () => { if (!drag.moved) openFocus(cam.name); });
@@ -590,7 +601,8 @@ function paintStatus() {
     li.querySelector(".state").className = "state " + st;
     if (st && st !== "off") online++;
   }
-  $("#rail-sum").textContent = state.stats ? `${online} of ${state.info.cameras.length} online` : "";
+  $("#rail-sum").textContent = state.stats ? `${online}/${state.info.cameras.length}` : "";
+  $("#rail-sum").title = state.stats ? `${online} of ${state.info.cameras.length} cameras online` : "";
   const part = (n, cls, label) => n ? h("span", { class: "vs" }, h("span", { class: "state " + cls }), `${n} ${label}`) : null;
   $("#vsum").replaceChildren(...[part(count.live, "live", "live"), part(count.conn, "conn", "connecting"), part(count.off, "off", "offline")].filter(Boolean));
 }
@@ -760,6 +772,8 @@ $("#grid").addEventListener("pointerdown", (e) => {
   if (state.arranging || state.focus || e.button !== 0 || e.target.closest(".zoomctl, .tile-tools, .view-empty")) return;
   pans.set(e.pointerId, { x: e.clientX, y: e.clientY });
   zoom.dragged = false;
+  // Zoomed in, a drag anywhere (on a camera too) looks around: no text selection or picture dragging.
+  if (zoom.z > 1.001 && e.pointerType === "mouse") e.preventDefault();
 });
 $("#grid").addEventListener("pointermove", (e) => {
   const p = pans.get(e.pointerId);
@@ -806,7 +820,7 @@ const tileObserver = new IntersectionObserver((entries) => {
 }, { root: $("#grid"), threshold: 0.05 });
 
 function makeTile(cam) {
-  const img = h("img", { alt: "" });
+  const img = h("img", { alt: "", draggable: "false" });
   const video = h("video", { autoplay: true, playsinline: true, muted: true, hidden: true });
   video.muted = true;
   const fps = h("span", { class: "fps" });
@@ -1343,9 +1357,13 @@ function showEventCard(ev, x) {
   img.hidden = !ev.thumb;
   if (ev.thumb) img.src = media(ev.thumb);
   card.hidden = false;
+  // The card floats over the whole window (see the CSS), placed above the bar.
   const wrap = $("#tl-wrap").getBoundingClientRect(), cw = 240;
-  card.style.left = `${Math.max(0, Math.min(wrap.width - cw, x - cw / 2))}px`;
+  card.style.left = `${wrap.left + Math.max(0, Math.min(wrap.width - cw, x - cw / 2))}px`;
+  card.style.top = `${Math.max(8, wrap.bottom - 70 - card.offsetHeight)}px`;
 }
+// Over everything: inside the Live view, some web views drew it under the cameras.
+document.body.append($("#ev-card"));
 
 function jumpEvent(dir) {
   if (!timeline) return;

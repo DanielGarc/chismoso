@@ -17,7 +17,7 @@ A view always fills the window. Switching between views is instant for cameras t
 
 ## Arranging cameras
 
-The list on the left has every camera. Drag one onto the grid to place it: in an empty spot it takes the usual size, and on another camera it replaces it there.
+The list on the left has every camera; the arrow at its top folds it down to a slim column of status dots (point at a dot for the name) and back. Drag a camera onto the grid to place it: in an empty spot it takes the usual size, and on another camera it replaces it there.
 
 Press **Arrange** (or **⋯ → Arrange cameras**) to change a view:
 
@@ -34,7 +34,7 @@ On a phone, or a window narrower than 700 pixels, views show their cameras two p
 Look closer at part of the wall without opening a camera:
 
 - Turn the mouse wheel, or pinch on a touchpad or touch screen, to zoom in where the pointer is.
-- When zoomed in, drag (or scroll with two fingers) to look around.
+- When zoomed in, drag anywhere, on a camera too, to look around (or scroll with two fingers).
 - The buttons in the corner zoom in and out, and **Fit** (or Ctrl+0) shows the whole view again.
 
 Clicking a camera still opens it full size.
