@@ -86,7 +86,8 @@ jobs:
           - platform: macos-latest
             args: "--target x86_64-apple-darwin"
           - platform: ubuntu-22.04
-            args: ""
+            # .rpm can't carry a "-" in its version (0.7.1-7); releases still make one
+            args: "--bundles deb,appimage"
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
