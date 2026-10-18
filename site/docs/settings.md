@@ -20,6 +20,8 @@ It refreshes on its own every ten seconds; press **Refresh** to update it right 
 
 Pick a **theme**: **Dark** (the default), **Light**, **Black** (pure black, nice on OLED screens), or **Match my system**, which follows your computer's light or dark mode.
 
+**TV mode** makes the focus outline and text bigger and lets a remote's arrow keys move around the screen. *On TVs only* (the default) turns it on by itself on Android TV; *Always* suits a wall-mounted screen. See [Android TV](phones.md#android-tv).
+
 **Custom** lets you make your own. Start from Dark, Light or Black, then pick any of four colours: **Accent** (buttons, links, the timeline), **Background**, **Panels** and **Text**. The rest of the palette (borders, muted text, highlights) is worked out from those, and changes show up as you pick. If the text gets hard to read, a note says so. **Reset colors** goes back to the starting theme.
 
 To share a theme, press **Copy theme** and send the text to someone. They choose **Custom → Paste a theme…**, paste it and press **Use this theme**.

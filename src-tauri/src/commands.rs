@@ -273,6 +273,13 @@ pub(crate) fn app_info() -> about::Info {
 /// When the app process started (for start-up timing, see `timing_report`).
 pub(crate) static STARTED: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
 
+/// Quit. The remote's Back button on the first screen of a TV or phone
+/// (the UI handles Back everywhere else, so it has to do this one too).
+#[tauri::command]
+pub(crate) fn quit_app(app: AppHandle) {
+    app.exit(0);
+}
+
 /// Start-up timing from the UI (dev/bench-startup.sh). Silent unless the
 /// CHISMOSO_TIMING environment variable is set; "exit" also quits afterwards.
 #[tauri::command]

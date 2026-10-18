@@ -129,6 +129,16 @@ jobs:
           includeUpdaterJson: false
           args: ${{ matrix.args }}
 
+  # Android APK (phones, tablets, Android TV).
+  android:
+    needs: prepare
+    uses: ./.github/workflows/android.yml
+    secrets: inherit
+    with:
+      release_id: ${{ needs.prepare.outputs.id }}
+      version: ${{ needs.prepare.outputs.version }}
+      throwaway_key: true
+
   # latest.json for copies that get development builds.
   manifest:
     needs: [prepare, build]

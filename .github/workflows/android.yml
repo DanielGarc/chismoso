@@ -1,0 +1,119 @@
+# Android APK: one file for phones, tablets and Android TV, for 64-bit ARM
+# (phones, Nvidia Shield) and 32-bit ARM (most TV sticks and boxes, such as
+# Chromecast with Google TV and Fire TV). Called by dev.yml and release.yml,
+# which pass the release to upload into.
+#
+# Signing (Settings → Secrets and variables → Actions). Android installs an
+# update over the old app only if both are signed with the same key, so make
+# the key once and keep it (and a copy of it) forever:
+#   keytool -genkeypair -keystore chismoso.jks -alias chismoso -keyalg RSA -keysize 4096 -validity 36500
+#   base64 -w0 chismoso.jks        → secret ANDROID_KEYSTORE
+#   the password you chose          → secret ANDROID_KEYSTORE_PASSWORD
+# Without them, dev builds are signed with a throwaway key (fine for trying
+# it; uninstall before installing the next one) and releases leave the APK out.
+name: Android
+
+on:
+  workflow_call:
+    inputs:
+      release_id:
+        description: Release to upload the APK into
+        required: true
+        type: string
+      ref:
+        description: Commit or tag to build (default the workflow's)
+        required: false
+        type: string
+        default: ""
+      version:
+        description: Version for this build only (dev builds)
+        required: false
+        type: string
+        default: ""
+      throwaway_key:
+        description: Sign with a throwaway key when the real one isn't set up
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Set the version (this build only)
+        if: inputs.version != ''
+        env:
+          VERSION: ${{ inputs.version }}
+        run: perl -0pi -e 's/^version = "[^"]*"/version = "$ENV{VERSION}"/m' src-tauri/Cargo.toml
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: android
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: tauri-cli@2
+
+      - name: Build
+        working-directory: src-tauri
+        run: |
+          export NDK_HOME="$ANDROID_NDK_LATEST_HOME"
+          cargo tauri android build --apk --target aarch64 armv7
+
+      - name: Sign
+        id: sign
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          THROWAWAY: ${{ inputs.throwaway_key }}
+        run: |
+          v=$(grep -m1 '^version' src-tauri/Cargo.toml | cut -d'"' -f2)
+          bt=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          unsigned=src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
+          "$bt/zipalign" -f -p 4 "$unsigned" aligned.apk
+          if [ -n "$KEYSTORE" ]; then
+            echo "$KEYSTORE" | base64 -d > key.jks
+            name="Chismoso_${v}_android.apk"
+          elif [ "$THROWAWAY" = "true" ]; then
+            KEYSTORE_PASSWORD=throwaway
+            keytool -genkeypair -keystore key.jks -alias test -keyalg RSA -keysize 2048 -validity 365 \
+              -storepass "$KEYSTORE_PASSWORD" -dname "CN=Chismoso test build" -noprompt
+            name="Chismoso_${v}_android-test-key.apk"
+            echo "::warning::No ANDROID_KEYSTORE secret: the APK is signed with a throwaway key. Uninstall it before installing another build."
+          else
+            echo "::warning::No ANDROID_KEYSTORE secret: the release has no Android APK. See .github/workflows/android.yml."
+            exit 0
+          fi
+          "$bt/apksigner" sign --ks key.jks --ks-pass env:KEYSTORE_PASSWORD --out "$name" aligned.apk
+          rm -f key.jks
+          "$bt/apksigner" verify "$name"
+          echo "file=$name" >> "$GITHUB_OUTPUT"
+        shell: bash
+
+      - name: Upload to the release
+        if: steps.sign.outputs.file != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FILE: ${{ steps.sign.outputs.file }}
+          ID: ${{ inputs.release_id }}
+        run: |
+          gh api --method POST -H "Content-Type: application/vnd.android.package-archive" \
+            "https://uploads.github.com/repos/${{ github.repository }}/releases/$ID/assets?name=$FILE" \
+            --input "$FILE" --jq .browser_download_url

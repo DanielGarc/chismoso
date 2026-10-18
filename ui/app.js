@@ -129,6 +129,9 @@ async function call(cmd, args) {
 $("#f-url").value = prefs.url;
 $("#f-user").value = prefs.user;
 $("#f-keep").checked = !!prefs.keep;
+// On a TV, typing the password with the remote is slow: keep the session by default.
+const firstRun = !localStorage.getItem("prefs");
+Platform.info.then(() => { if (firstRun && Platform.tv) $("#f-keep").checked = true; });
 ($("#f-url").value ? $("#f-pass") : $("#f-url")).focus();
 
 async function connect({ trustNew = false } = {}) {
@@ -359,6 +362,25 @@ function showView(v) {
   if (v === "load") showLoad();
 }
 
+// Back (a TV remote's or a phone's Back button): closes whatever is on top,
+// one step at a time; on the first screen, quits like other apps do.
+function goBack() {
+  const dlg = [...document.querySelectorAll("dialog[open]")].at(-1);
+  if (dlg) { if (dlg.dispatchEvent(new Event("cancel", { cancelable: true }))) dlg.close(); return; }
+  if ($("#vmenu")) return closeViewMenu();
+  if (!$("#server-menu").hidden) return closeMenu();
+  if (document.body.classList.contains("theater")) return toggleFullscreen();
+  if (timeline && (timeline.sel || timeline.selectMode)) return clearSelection();
+  if (state.arranging) return endArrange();
+  if (state.focus) return $("#focus-back").click();
+  if (state.gridRec) return goLive();
+  if (state.info && state.view !== "live") { showView("live"); return Remote.focus($('.tab[data-view="live"]')); }
+  invoke("quit_app");
+}
+Platform.info.then(() => {
+  if (Platform.mobile) window.__TAURI__.app?.onBackButtonPress?.(goBack)?.catch?.(() => {});
+});
+
 function closeMenu() { $("#server-menu").hidden = true; $("#server-chip").setAttribute("aria-expanded", "false"); }
 $("#server-chip").addEventListener("click", (e) => {
   e.stopPropagation();
@@ -430,13 +452,17 @@ const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2
 function ensureViews() {
   const cams = state.info.cameras.map((c) => c.name);
   let views = Views.clean(prefs.views);
+  const groups = (state.info.groups || []).map((g) => ({ name: prettyName(g.name), cameras: g.cameras }));
   if (!views) {
     // First start with views: Frigate's camera groups and earlier layouts
     // become views (tabs), and the grid
     // shows live video by default (streams now stay connected while the app is open).
-    const groups = (state.info.groups || []).map((g) => ({ name: prettyName(g.name), cameras: g.cameras }));
     views = Views.initial(cams, [...groups, ...(prefs.layouts || [])], newId);
     if (prefs.views === undefined) prefs.gridLive = true;
+  } else if (Platform.tv) {
+    // A TV can't arrange views, so camera groups added in Frigate later become views too.
+    const have = new Set(views.map((v) => v.name));
+    views.push(...Views.initial(cams, groups.filter((g) => !have.has(g.name)), newId).slice(1));
   }
   prefs.views = views.map((v) => Views.sync(v, cams));
   if (!prefs.views.some((v) => v.id === prefs.view)) prefs.view = prefs.views[0].id;
@@ -833,7 +859,7 @@ function makeTile(cam) {
   handle.addEventListener("pointerdown", (e) => resizeStart(e, currentView().items.findIndex((x) => x.cam === cam.name)));
   // Clicking a tile opens that camera, at the same moment if we're playing
   // back. A tile parked during grid playback starts playing instead.
-  const el = h("div", { class: "tile", "data-cam": cam.name, onclick: () => {
+  const el = h("div", { class: "tile", "data-cam": cam.name, role: "button", tabindex: "0", "aria-label": cam.friendly_name, onclick: () => {
     if (zoom.dragged || drag.moved || state.arranging) return;
     if (state.gridRec && state.parked?.has(cam.name)) return promoteTile(cam.name);
     openFocus(cam.name, 0, state.gridRec && pb.active ? pb.t : null);
@@ -1157,6 +1183,7 @@ async function openFocus(name, streamIdx = 0, at = null) {
   $("#focus").hidden = false;
   $("#view-live").classList.add("in-focus");
   $("#focus-name").textContent = cam.friendly_name;
+  Remote.focus($("#focus-back"));
 
   const sel = $("#focus-stream");
   sel.replaceChildren(...cam.streams.map(([label], i) => h("option", { value: i, selected: i === streamIdx }, label)));
@@ -1497,6 +1524,9 @@ document.addEventListener("keydown", (e) => {
   if (k === " " || k === "k") { e.preventDefault(); togglePlay(); }
   else if (k === "ArrowLeft") { e.preventDefault(); nudge(-10); }
   else if (k === "ArrowRight") { e.preventDefault(); nudge(10); }
+  else if (k === "MediaPlayPause" || (k === "Enter" && document.activeElement === $("#timeline"))) { e.preventDefault(); togglePlay(); }
+  else if (k === "MediaRewind") { e.preventDefault(); nudge(-10); }
+  else if (k === "MediaFastForward") { e.preventDefault(); nudge(10); }
   else if (k === "j") stepSpeed(-1);
   else if (k === "l") stepSpeed(1);
   else if (k === "[") jumpEvent(-1);
@@ -1591,6 +1621,7 @@ function closeFocus(silent) {
     else { giveBack.moveTo(tile.video); attachTileRtc(tile, giveBack); }
   }
   if (resume) playAt(resume); else startGrid();
+  Remote.focus(state.tiles.get(f.cam)?.el);
 }
 
 $("#focus-back").addEventListener("click", () => {
@@ -2503,6 +2534,11 @@ function renderThemeUi() {
   $("#t-contrast").hidden = low >= 4.5;
   $("#t-contrast").textContent = "Text may be hard to read on this background. Try a lighter or darker text colour.";
 }
+// TV mode: platform.js applies it; this is the setting.
+$("#s-tv").value = Platform.tvMode;
+$("#s-tv").addEventListener("change", (e) => Platform.setTvMode(e.target.value));
+document.addEventListener("tvmode", () => { if (Platform.tv && state.arranging) endArrange(); });
+
 $("#t-theme").addEventListener("change", (e) => {
   const id = e.target.value;
   if (id === "custom" && !localStorage.getItem("customTheme")) {

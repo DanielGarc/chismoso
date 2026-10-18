@@ -192,7 +192,7 @@
               <button data-z="out" title="Zoom out (-)">−</button><button data-span="3600">1h</button><button data-span="21600">6h</button><button data-span="86400">1d</button><button data-span="604800">7d</button><button data-z="in" title="Zoom in (+)">+</button>
             </div>
           </div>
-          <canvas class="timeline" id="timeline"></canvas>
+          <canvas class="timeline" id="timeline" tabindex="0" data-arrows="x" aria-label="Timeline. Left and right move 10 seconds; OK plays or pauses."></canvas>
           <div class="ev-card" id="ev-card" hidden>
             <img id="ev-img" alt="">
             <div><strong id="ev-title"></strong><span id="ev-time"></span></div>
@@ -340,6 +340,14 @@
         <div class="card-head"><h3>Appearance</h3></div>
         <div class="notify">
           <label class="check"><input type="checkbox" id="s-grid-live"> <span>Live video in the grid <span class="muted">(off: pictures that refresh every few seconds, for slow connections)</span></span></label>
+          <label class="inline">TV mode
+            <select id="s-tv">
+              <option value="auto">On TVs only</option>
+              <option value="on">Always</option>
+              <option value="off">Never</option>
+            </select>
+            <span class="muted small">Bigger text and outlines, and a remote's arrow keys move around the screen.</span>
+          </label>
           <label class="inline">Theme
             <select id="t-theme">
               <option value="system">Match my system</option>
@@ -439,6 +447,7 @@
 <div class="toast share-toast" id="share-toast" role="status" hidden><span id="share-toast-text"></span><span class="share-acts" id="share-toast-acts"></span><button class="link" id="share-toast-close" aria-label="Close">✕</button></div>
 
 <script src="platform.js"></script>
+<script src="remote.js"></script>
 <script src="webrtc.js"></script>
 <script src="playback.js"></script>
 <script src="timeline.js"></script>

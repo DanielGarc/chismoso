@@ -45,6 +45,16 @@ pub struct Features {
     pub share_sheet: bool,
     /// Put files on the clipboard, to paste into chats and email.
     pub copy_files: bool,
+    /// A TV: driven with a remote's arrow keys from across the room. The UI
+    /// turns on TV mode (big focus outline, no drag and drop) unless the
+    /// user picked otherwise. Android TV sets CHISMOSO_TV in MainActivity;
+    /// anywhere else CHISMOSO_TV=1 forces it (a wall screen, testing).
+    pub tv: bool,
+}
+
+/// CHISMOSO_TV is set: this is a TV (see `Features::tv`).
+pub fn tv_env() -> bool {
+    std::env::var_os("CHISMOSO_TV").is_some_and(|v| v != "0" && !v.is_empty())
 }
 
 /// A newer release, as offered to the user.

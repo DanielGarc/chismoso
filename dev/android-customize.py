@@ -11,6 +11,11 @@ It is idempotent. What it changes, and why:
   notch and keyboard; light bar icons (dark app).
 - network_security_config.xml: the web view may load plain HTTP only from
   127.0.0.1 (the app's own media server).
+- MainActivity.kt also: on Android TV, sets CHISMOSO_TV (TV mode) and keeps
+  the screen on.
+- AndroidManifest.xml: Android TV launcher banner (made by dev/make-icons.sh)
+  and no touchscreen required, so TVs can install it. (Tauri's template
+  already declares leanback and the LEANBACK_LAUNCHER category.)
 - themes.xml: dark window background (no white flash).
 - app/build.gradle.kts: versionName/versionCode read from Cargo.toml.
 - buildSrc BuildTask.kt: Gradle runs `cargo tauri` (the Rust CLI).
@@ -44,6 +49,22 @@ shutil.copy(os.path.join(overlay, "network_security_config.xml"), os.path.join(m
 edit(os.path.join(main, "AndroidManifest.xml"), lambda s: s if "networkSecurityConfig" in s else s.replace(
     'android:usesCleartextTraffic="${usesCleartextTraffic}">',
     'android:usesCleartextTraffic="${usesCleartextTraffic}"\n        android:networkSecurityConfig="@xml/network_security_config">', 1))
+
+def tv(s):
+    if 'android.hardware.touchscreen' not in s:
+        s = s.replace('<uses-feature android:name="android.software.leanback"',
+            '<uses-feature android:name="android.hardware.touchscreen" android:required="false" />\n'
+            '    <uses-feature android:name="android.software.leanback"', 1)
+    if 'android:banner' not in s:
+        s = s.replace('android:icon="@mipmap/ic_launcher"', 'android:icon="@mipmap/ic_launcher"\n        android:banner="@drawable/banner"', 1)
+    if 'LEANBACK_LAUNCHER' not in s:
+        s = s.replace('<category android:name="android.intent.category.LAUNCHER" />',
+            '<category android:name="android.intent.category.LAUNCHER" />\n'
+            '                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />', 1)
+    return s
+edit(os.path.join(main, "AndroidManifest.xml"), tv)
+if not os.path.exists(os.path.join(main, "res", "drawable-xhdpi", "banner.png")):
+    print("no Android TV banner yet: run sh dev/make-icons.sh")
 
 for t in glob.glob(os.path.join(main, "res", "values*", "themes.xml")):
     edit(t, lambda s: s if "windowBackground" in s else re.sub(

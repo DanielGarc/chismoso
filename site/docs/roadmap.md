@@ -23,8 +23,8 @@ Keep it quick on modest computers and big camera walls.
 - Sharper zoom: switch a camera to its full-quality stream when you zoom in on it, and back when you zoom out.
 - Fewer connections and less CPU with many cameras on screen.
 
-### Phone apps
-Android first, then iOS, from the same code as the desktop app (see [Phone apps](phones.md)). Notifications in the background come later, because phones need push notifications for that.
+### Phone and TV apps
+Android first (phones, tablets and Android TV, with a TV mode for the remote), then iOS, from the same code as the desktop app (see [Phones and TVs](phones.md)). Notifications in the background come later, because phones need push notifications for that.
 
 ### Easier to install
 Flathub for Linux and the Microsoft Store for Windows, so updates come through your usual app store. winget and Homebrew are small additions after that.

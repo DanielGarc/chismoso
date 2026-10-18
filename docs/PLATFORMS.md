@@ -104,6 +104,23 @@ the same network: `python3 dev/mock_frigate.py --host 0.0.0.0` and sign in to
 
 On Android the package name is the identifier, `org.caprichosos.chismoso`.
 
+### Android TV
+
+The same APK installs on Android TV / Google TV: the manifest declares
+leanback (not required), no touchscreen required, the `LEANBACK_LAUNCHER`
+category and a 320×180 banner (`res/drawable-xhdpi/banner.png`, made by
+`dev/make-icons.sh`). Build for both ARM sizes, since most TV sticks run
+32-bit Android: `cargo tauri android build --apk --target aarch64 armv7`
+(`.github/workflows/android.yml` does this for dev builds and releases).
+
+On a TV the UI is in TV mode (`html.tv`): `ui/remote.js` moves the focus
+with the arrow keys to the nearest focusable element in that direction, OK
+presses it, and Back (`goBack()` in app.js, via Tauri's back-button event)
+closes one thing at a time. Anything new must be reachable that way: a real
+`<button>`, or `role="button" tabindex="0"`; nothing that only works by
+hover or drag. To try it on desktop: `CHISMOSO_TV=1 cargo run`, or Settings →
+Appearance → TV mode → Always, then use the arrow keys, Enter and Escape.
+
 ## Feature status by platform
 
 | Feature | Desktop | Android | iOS | Notes |
@@ -117,6 +134,7 @@ On Android the package name is the identifier, `org.caprichosos.chismoso`.
 | Notifications in the background | ✅ (app keeps running) | ❌ | ❌ | Needs push (FCM/APNs) through a relay server, or Frigate's own web push |
 | Window controls, F11, folder picker | ✅ | hidden | hidden | via `Features` |
 | Command line (`--url … --camera …`) | ✅ | n/a | n/a | `main.rs` only |
+| TV mode (remote's arrow keys, big focus) | Settings → Appearance | on by itself on Android TV | — | `Features::tv`; `html.tv`, `ui/remote.js`. MainActivity sets `CHISMOSO_TV` and keeps the screen on |
 | Certificate checks | OS store + pinning | Mozilla roots + pinning | OS store + pinning | Android's OS store needs a Java bridge |
 
 "Expected" means it compiles and uses APIs the platform's web view supports,

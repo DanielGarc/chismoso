@@ -22,6 +22,7 @@ pub fn features() -> Features {
         self_update: false,
         share_sheet: false,
         copy_files: false,
+        tv: super::tv_env(),
     }
 }
 

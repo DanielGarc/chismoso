@@ -42,6 +42,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::connect,
             commands::timing_report,
+            commands::quit_app,
             commands::bench_prefs,
             commands::resume,
             commands::overview,

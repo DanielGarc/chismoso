@@ -19,6 +19,7 @@ pub fn features() -> Features {
         self_update: !flatpak,
         share_sheet: cfg!(any(target_os = "macos", target_os = "windows")),
         copy_files: !flatpak,
+        tv: super::tv_env(),
     }
 }
 

@@ -595,3 +595,30 @@ body.arranging #arrange { display: none; }
 body.dragging { user-select: none; -webkit-user-select: none; }
 body.dragging .view-empty { display: none; }
 html[data-compact] .tile-tools { display: none; }
+
+/* ── TV mode (html.tv, platform.js): a remote from across the room ──
+   The arrow keys move the focus (remote.js), so where it is must be plain
+   to see. No drag and drop on a TV: arranging, the camera list and zoom are
+   hidden; views come from the server's camera groups and other devices'. */
+html.tv body { font-size: 16px; }
+html.tv .small, html.tv .vsum, html.tv label { font-size: 14.5px; }
+html.tv h3 { font-size: 18px; }
+html.tv :focus { outline: 3px solid var(--accent); outline-offset: 2px; box-shadow: 0 0 0 7px var(--focus-ring); }
+html.tv input:focus, html.tv select:focus, html.tv textarea:focus { outline-offset: 0; }
+html.tv .btn, html.tv .tab, html.tv .vtab { min-height: 40px; }
+html.tv .view { padding: 14px 28px 22px; }
+html.tv #view-live:not([hidden]) { padding-top: 10px; }
+html.tv .rail, html.tv #arrange, html.tv #arrange-bar, html.tv .zoomctl, html.tv .tile-tools, html.tv .tile .resize,
+html.tv #vadd, html.tv .vmore, html.tv .view-empty p, html.tv #empty-fill { display: none !important; }
+html.tv .vtab.on { padding-right: 12px; }
+/* a camera tile: a thick frame inside the tile (outlines get cut off at the grid's edge) */
+html.tv .tile:focus { outline: none; box-shadow: none; }
+html.tv .tile:focus::after { content: ""; position: absolute; inset: 0; border: 4px solid var(--accent); border-radius: inherit; pointer-events: none; z-index: 5; }
+html.tv .tile .label { font-size: 16px; padding: 22px 12px 9px; }
+html.tv .tile .label .fps { font-size: 13px; }
+html.tv .tile:focus .label { background: linear-gradient(transparent, var(--accent)); color: var(--on-accent); }
+html.tv .timeline:focus { outline-offset: -3px; }
+html.tv .ptz { opacity: 1; }
+/* a TV screen is only 540 px tall: let the picture shrink to fit the controls */
+html.tv .stage { min-height: 0; }
+html.tv .focus-bar { gap: 8px; }

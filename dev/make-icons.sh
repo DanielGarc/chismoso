@@ -49,6 +49,23 @@ with sync_playwright() as p:
         pg.close()
     b.close()
 PY
+# Android TV launcher banner: 320×180 (xhdpi), the icon and the name.
+mkdir -p "$res/drawable-xhdpi"
+python3 - "$res" <<'PY'
+import sys
+from playwright.sync_api import sync_playwright
+res = sys.argv[1]
+svg = open("design/icon.svg").read().replace("<svg ", '<svg width="104" height="104" ', 1)
+html = f'''<body style="margin:0"><div style="width:320px;height:180px;background:#0E1424;display:flex;
+  align-items:center;justify-content:center;gap:16px;font:600 38px system-ui,'Segoe UI',sans-serif;color:#F1F5FB">
+  {svg}<span>Chismoso</span></div></body>'''
+with sync_playwright() as p:
+    b = p.chromium.launch()
+    pg = b.new_page(viewport={"width": 320, "height": 180})
+    pg.set_content(html)
+    pg.screenshot(path=f"{res}/drawable-xhdpi/banner.png")
+    b.close()
+PY
 cat > "$res/values/ic_launcher_background.xml" <<'XML'
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
